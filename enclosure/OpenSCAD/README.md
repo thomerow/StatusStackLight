@@ -27,7 +27,14 @@ Aktuelle Außenmaße: **138,8 × 120,8 × 35,8 mm** (Innenraum 134 × 116 × 31 
   Schnappclipse mit 45°-Einführfase. Platine schräg unter die starre Seite schieben,
   gegenüber herunterdrücken – rastet ein.
 * **Verschluss:** 4 Eckdome mit Heat-Set-Inserts M3 (Ø 4,0 × 6 mm), Senkkopfschrauben M3
-  von unten.
+  von unten. Die Senkungen sind **kegelig** ausgeführt (90° nach DIN 7991), der Kopf liegt
+  also flächig auf der Kegelflanke auf statt auf einer Kante. Die Tiefe wird aus
+  `senkung_winkel` und `senkung_d` berechnet und nicht separat vorgegeben – sonst passt der
+  Kegel nicht mehr zum Schraubenkopf. Ein kurzer zylindrischer Anlauf (`senkung_anlauf`,
+  0,3 mm) an der Außenfläche fängt den Elefantenfuß der ersten Druckschicht ab; der Kopf
+  sitzt damit rund 0,4 mm unter der Oberfläche. Bei 2,4 mm Bodenstärke bleiben 0,7 mm
+  Material unter der Senkung stehen – das Modell rechnet es aus und warnt, wenn es zu
+  dünn wird.
 
 ### USB-C-PD-Triggerboard – Zugentlastung
 
@@ -69,6 +76,7 @@ abgeleiteten Maße und die Kollisionsprüfungen des Modells aus:
 Innenmasse  : 134 x 116 x 31 mm
 Aussenmasse : 138.8 x 120.8 x 35.8 mm
 USB-C-Buchse: Stirn y=-1  Ansenkungsboden y=-1.2  Restwand=0.2 mm  -> OK
+Senkung     : 90 Grad, Tiefe 1.7 mm  Restboden=0.7 mm  -> OK
 Saeulendome : Unterkante z=21  hoechste Baugruppe z=19  -> OK
 ```
 
@@ -131,7 +139,7 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 | Teil | Orientierung | Hinweis |
 |---|---|---|
 | `body.stl` | **auf dem Deckel stehend**, Öffnung nach oben | stützfrei; die nach unten offenen Steckerschlitze zeigen dabei nach oben |
-| `boden.stl` | flach, Clipse nach oben | stützfrei |
+| `boden.stl` | flach, Clipse nach oben | stützfrei; die Senkungen liegen auf dem Druckbett und sind mit 45° selbsttragend |
 
 * Schichthöhe 0,2 mm, 3 Perimeter (Bodenplatte gern 4, damit die Clipse nicht abscheren),
   Infill ≥ 25 %.

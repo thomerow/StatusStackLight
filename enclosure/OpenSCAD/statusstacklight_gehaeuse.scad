@@ -52,8 +52,11 @@ insert_d        = 4.0;    // Bohrung fuer Heat-Set-Insert M3
 insert_l        = 6.0;    // Einpresstiefe des Inserts
 insert_pilot_d  = 2.8;    // Freibohrung unterhalb des Inserts
 schraube_d      = 3.4;    // Durchgangsloch M3 in der Bodenplatte
-senkung_d       = 6.2;    // Senkung fuer M3-Senkkopf (DIN 7991)
-senkung_t       = 1.7;
+senkung_d       = 6.2;    // Kopfdurchmesser DIN 7991 (6,0) + Spiel
+senkung_winkel  = 90;     // eingeschlossener Kopfwinkel DIN 7991
+senkung_anlauf  = 0.3;    // kurzer zylindrischer Anlauf an der Aussenflaeche:
+                          // faengt den Elefantenfuss der ersten Schicht ab und
+                          // haelt den Kopf vom Radius unter dem Kopf frei
 
 /* [Zentrierlippe des Bodens] */
 lippe           = true;
@@ -195,6 +198,13 @@ mu_z   = nodemcu_unterbau + pcb_dicke + microusb_achse;
 mu_o_u = mu_z - microusb_oeff_h/2;
 mu_o_o = mu_z + microusb_oeff_h/2;
 
+// Senkung der Bodenschrauben: Kegel mit senkung_winkel, an der Aussenflaeche
+// senkung_d breit, verjuengt auf das Durchgangsloch. Die Tiefe folgt aus dem
+// Winkel - nicht separat vorgeben, sonst passt der Kegel nicht zum Schraubenkopf.
+senk_kegel_t = (senkung_d - schraube_d)/2 / tan(senkung_winkel/2);
+senk_t_ges   = senkung_anlauf + senk_kegel_t;
+senk_rest    = boden_dicke - senk_t_ges;   // Restmaterial unter der Senkung
+
 // Eckdome
 dom_pos = [[dom_abstand,           dom_abstand],
            [innen_x - dom_abstand, dom_abstand],
@@ -209,6 +219,9 @@ echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
+echo(str("Senkung     : ", senkung_winkel, " Grad, Tiefe ", senk_t_ges,
+         " mm  Restboden=", senk_rest, " mm",
+         (senk_rest >= 0.6) ? "  -> OK" : "  -> zu duenn, boden_dicke erhoehen!"));
 echo(str("Saeulendome : Unterkante z=", innen_z - saeule_dom_l,
          "  hoechste Baugruppe z=", hoehe_bauteile,
          (innen_z - saeule_dom_l >= hoehe_bauteile) ? "  -> OK" : "  -> KOLLISION!"));
@@ -470,6 +483,19 @@ module pd_anschlagrippe() {
         cube([pd_b + 4, usbc_rippe_dicke, pd_unterbau + pd_dicke + anschlag_ueber]);
 }
 
+// Schraubloch der Bodenplatte: Durchgang + kegelige Senkung von aussen.
+// z = -boden_dicke ist die Aussenflaeche; die Platte wird mit dieser Flaeche
+// auf dem Druckbett gedruckt - der 45-Grad-Kegel ist dabei selbsttragend.
+module senkloch() {
+    translate([0, 0, -boden_dicke - 1])
+        cylinder(h = boden_dicke + 2, d = schraube_d);
+    if (senkung_anlauf > 0)
+        translate([0, 0, -boden_dicke - eps])
+            cylinder(h = senkung_anlauf + eps, d = senkung_d);
+    translate([0, 0, -boden_dicke + senkung_anlauf])
+        cylinder(h = senk_kegel_t, d1 = senkung_d, d2 = schraube_d);
+}
+
 module lippe_koerper() {
     linear_extrude(height = lippe_h)
         difference() {
@@ -515,12 +541,9 @@ module boden() {
             microusb_fueller();
             pd_anschlagrippe();
         }
-        // Verschraubung mit Senkung von unten
+        // Verschraubung mit kegeliger Senkung von unten
         for (p = dom_pos)
-            translate([p[0], p[1], -boden_dicke - 1]) {
-                cylinder(h = boden_dicke + 2, d = schraube_d);
-                cylinder(h = 1 + senkung_t, d = senkung_d);
-            }
+            translate([p[0], p[1], 0]) senkloch();
     }
 }
 
