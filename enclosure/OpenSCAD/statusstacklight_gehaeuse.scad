@@ -77,7 +77,12 @@ saeule_insert_l      = 8.0;
 saeule_dom_d         = 9.0;
 saeule_dom_l         = 10.0;  // Laenge der Dome unterhalb des Deckels
 saeule_verstaerkung  = 2.0;   // zusaetzliche Deckeldicke im Flanschbereich
-saeule_zentrierring  = true;  // erhabener Ring, der den Saeulenfuss zentriert
+// Erhabener Ring um den Saeulenfuss. ABGESCHALTET: der Hauptkoerper wird auf
+// dem Deckel stehend gedruckt, der Ring waere dann das einzige, was auf dem
+// Druckbett aufliegt - die gesamte restliche Deckelflaeche haette 1,2 mm in
+// der Luft gehangen. Die 4 M4-Schrauben auf dem 55er Lochkreis zentrieren den
+// Flansch ohnehin. Nur einschalten, wenn der Koerper anders gedruckt wird.
+saeule_zentrierring  = false;
 saeule_ring_h        = 1.2;
 saeule_ring_breite   = 2.0;
 
@@ -109,7 +114,10 @@ nodemcu_l        = 58;    // Laenge
 nodemcu_b        = 31.5;  // Breite
 nodemcu_h        = 14;    // ANNAHME (grosszuegig): Gesamthoehe. Real eher ~6 mm -
                           // die Reserve schadet nicht, das MOSFET-Modul ist hoeher.
-nodemcu_unterbau = 4.0;   // Freiraum fuer die Stiftleisten
+nodemcu_unterbau = 4.0;   // Kabel werden direkt angeloetet, keine Stiftleisten:
+                          // 4 mm sind reichlich Luft fuer die Loetstellen. Bis 5,0
+                          // kostet das keine Gehaeusehoehe (dann uebernimmt der
+                          // NodeMCU von Modul als hoechste Baugruppe).
 nodemcu_pos      = [90, 58];  // um 90 Grad gedreht: Micro-USB zeigt zur Rueckwand
                               // x >= 90 haelt Abstand zum MOSFET-Endanschlag
 microusb_oeff_b  = 12;    // Wandausschnitt Breite
@@ -198,6 +206,10 @@ mu_z   = nodemcu_unterbau + pcb_dicke + microusb_achse;
 mu_o_u = mu_z - microusb_oeff_h/2;
 mu_o_o = mu_z + microusb_oeff_h/2;
 
+// Wirksame Ringhoehe: geht in die Laenge der Deckeldurchbrueche ein, damit
+// diese den Ring durchstossen - ohne Ring waeren es unnoetige Ueberlaengen.
+ring_h_eff = saeule_zentrierring ? saeule_ring_h : 0;
+
 // Senkung der Bodenschrauben: Kegel mit senkung_winkel, an der Aussenflaeche
 // senkung_d breit, verjuengt auf das Durchgangsloch. Die Tiefe folgt aus dem
 // Winkel - nicht separat vorgeben, sonst passt der Kegel nicht zum Schraubenkopf.
@@ -212,7 +224,8 @@ dom_pos = [[dom_abstand,           dom_abstand],
            [innen_x - dom_abstand, innen_y - dom_abstand]];
 
 echo(str("Innenmasse  : ", innen_x, " x ", innen_y, " x ", innen_z, " mm"));
-echo(str("Aussenmasse : ", aussen_x, " x ", aussen_y, " x ", aussen_z, " mm"));
+echo(str("Aussenmasse : ", aussen_x, " x ", aussen_y, " x ", aussen_z, " mm",
+         saeule_zentrierring ? str(" + ", saeule_ring_h, " mm Zentrierring") : " (Deckel plan)"));
 echo(str("USB-C       : x=", usbc_x, "  Achse z=", usbc_z,
          "  Durchbruch z ", usbc_o_u, " .. ", usbc_o_o));
 echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
@@ -409,11 +422,11 @@ module deckel_additiv() {
 }
 
 module deckel_negativ() {
-    oben = innen_z + deckel_dicke;
+    oben = innen_z + deckel_dicke;   // Deckelaussenflaeche - ohne Ring die Oberseite
 
     // zentrale Kabeldurchfuehrung mit Fase auf beiden Seiten
     translate([mitte_x, mitte_y, innen_z - saeule_verstaerkung - 1])
-        cylinder(h = deckel_dicke + saeule_verstaerkung + 2 + saeule_ring_h,
+        cylinder(h = deckel_dicke + saeule_verstaerkung + 2 + ring_h_eff,
                  d = saeule_kabel_d);
     translate([mitte_x, mitte_y, oben - saeule_kabel_fase])
         cylinder(h = saeule_kabel_fase + eps,
@@ -425,7 +438,7 @@ module deckel_negativ() {
     // Flanschschrauben: Durchgang von oben, darunter das Insert
     saeule_positionen() {
         translate([0, 0, innen_z - saeule_dom_l - 1])
-            cylinder(h = saeule_dom_l + deckel_dicke + saeule_ring_h + 2,
+            cylinder(h = saeule_dom_l + deckel_dicke + ring_h_eff + 2,
                      d = saeule_schraube_d);
         if (saeule_insert)
             translate([0, 0, innen_z - saeule_dom_l - eps])

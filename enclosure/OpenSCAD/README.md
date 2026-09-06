@@ -22,6 +22,12 @@ Aktuelle Außenmaße: **138,8 × 120,8 × 35,8 mm** (Innenraum 134 × 116 × 31 
   diesen Innenkoordinaten angegeben.
 * **Die Bodenplatte trägt die gesamte Elektronik.** Sie wird außerhalb des Gehäuses
   bestückt und anschließend von unten senkrecht eingeschoben.
+* **Plane Oberseite.** Der Deckel ist außen völlig glatt – nur die vier M4-Löcher und die
+  Kabeldurchführung. Ein erhabener Zentrierring um den Säulenfuß ist zwar als
+  `saeule_zentrierring` weiterhin im Modell, aber **abgeschaltet**: der Hauptkörper wird auf
+  dem Deckel stehend gedruckt, der Ring wäre dann das Einzige, was auf dem Druckbett
+  aufliegt, und die gesamte restliche Deckelfläche hinge 1,2 mm in der Luft. Zentriert wird
+  der Flansch ohnehin durch die vier M4-Schrauben auf dem 55er Lochkreis.
 * **Keine Schrauben für die Platinen.** Jede Platine sitzt auf vier Auflagepads; an einer
   Kante liegen zwei starre Auflageleisten, an der gegenüberliegenden zwei federnde
   Schnappclipse mit 45°-Einführfase. Platine schräg unter die starre Seite schieben,
@@ -74,7 +80,7 @@ abgeleiteten Maße und die Kollisionsprüfungen des Modells aus:
 
 ```
 Innenmasse  : 134 x 116 x 31 mm
-Aussenmasse : 138.8 x 120.8 x 35.8 mm
+Aussenmasse : 138.8 x 120.8 x 35.8 mm (Deckel plan)
 USB-C-Buchse: Stirn y=-1  Ansenkungsboden y=-1.2  Restwand=0.2 mm  -> OK
 Senkung     : 90 Grad, Tiefe 1.7 mm  Restboden=0.7 mm  -> OK
 Saeulendome : Unterkante z=21  hoechste Baugruppe z=19  -> OK
@@ -99,12 +105,13 @@ im Rendering/STL **nicht** enthalten.
 | Variable | Wert | |
 |---|---|---|
 | `mosfet_h` | 16 | Bauhöhe des MOSFET-Moduls inkl. Schraubklemmen |
-| `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes (bestimmt den Zentrierring) |
+| `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes; bestimmt die Deckelverstärkung (Fuß + 10 mm) auf der Innenseite |
 | `saeule_lochkreis_d` | 55 | |
 | `saeule_schrauben_n` | 4 | |
 | `pd_b` × `pd_l` | 20 × 30 | USB-C-PD-Triggerboard |
 | `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
 | `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
+| `nodemcu_unterbau` | 4,0 | Kabel werden direkt angelötet, keine Stiftleisten – 4 mm sind reichlich Luft für die Lötstellen. Bis 5,0 kostet das keine Gehäusehöhe. |
 
 > **Konvention:** alle `*_h` sind **Gesamthöhen inklusive Platine**, so wie man sie mit dem
 > Messschieber über das ganze Modul abgreift. `*_unterbau` ist der Abstand der
@@ -115,7 +122,6 @@ im Rendering/STL **nicht** enthalten.
 | Variable | aktuell | Anmerkung |
 |---|---|---|
 | `saeule_kabel_d` | 12 | Durchmesser der zentralen Kabeldurchführung |
-| `nodemcu_unterbau` | 4,0 | erhöhen, falls die Stiftleisten weiter durchstehen |
 | `nodemcu_h` | 14 | großzügige Annahme, real eher ~6 mm. Schadet nichts – das MOSFET-Modul ist mit 19 mm ohnehin die höchste Baugruppe. |
 | `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
 
@@ -138,7 +144,7 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 
 | Teil | Orientierung | Hinweis |
 |---|---|---|
-| `body.stl` | **auf dem Deckel stehend**, Öffnung nach oben | stützfrei; die nach unten offenen Steckerschlitze zeigen dabei nach oben |
+| `body.stl` | **auf dem Deckel stehend**, Öffnung nach oben | stützfrei: die plane Deckelfläche liegt vollflächig auf dem Bett, die nach unten offenen Steckerschlitze zeigen dabei nach oben, und die Fase der Kabeldurchführung ist als 45°-Überhang selbsttragend |
 | `boden.stl` | flach, Clipse nach oben | stützfrei; die Senkungen liegen auf dem Druckbett und sind mit 45° selbsttragend |
 
 * Schichthöhe 0,2 mm, 3 Perimeter (Bodenplatte gern 4, damit die Clipse nicht abscheren),
@@ -156,7 +162,8 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen.
 5. Bodenplatte senkrecht von unten einführen (USB-C und Micro-USB gleiten in ihre Schlitze),
    mit 4 × M3-Senkkopf verschrauben.
-6. Signalsäule auf den Zentrierring setzen und mit 4 × M4 durch den Deckel verschrauben.
+6. Signalsäule mittig auf den Deckel setzen und mit 4 × M4 verschrauben – die Schrauben
+   auf dem 55er Lochkreis übernehmen die Zentrierung.
 
 ## Nächste Ausbaustufen
 
