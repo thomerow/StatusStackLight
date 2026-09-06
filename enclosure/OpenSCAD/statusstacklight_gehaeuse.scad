@@ -90,17 +90,22 @@ anschlag_ueber      = 1.0;    // Hoehe des Anschlags ueber der Platinenoberseite
 pad_d               = 6.0;    // Kantenlaenge der Auflagepads
 pad_inset           = 5.0;    // Abstand Padmitte von der Platinenecke
 
+// KONVENTION: alle *_h sind GESAMTHOEHEN inkl. Platine (so, wie man sie mit
+// dem Messschieber ueber das ganze Modul abgreift). *_unterbau ist der Abstand
+// der Platinenunterseite von der Trennebene.
+
 /* [Platine: 8-Kanal-MOSFET-Modul - gemessen 68 x 72 mm] */
 mosfet_l        = 72;     // laengere Kante (X)
 mosfet_b        = 68;     // kuerzere Kante (Y) - hier sitzen die Schraubklemmen
-mosfet_h        = 16;     // GEMESSEN: Bauhoehe inkl. Schraubklemmen
+mosfet_h        = 16;     // GEMESSEN: Gesamthoehe inkl. Platine und Schraubklemmen
 mosfet_unterbau = 3.0;
 mosfet_pos      = [12, 42];   // Klemmkanten zeigen zur linken/rechten Seitenwand
 
 /* [Platine: Lolin NodeMCU V3] */
 nodemcu_l        = 58;    // Laenge
 nodemcu_b        = 31.5;  // Breite
-nodemcu_h        = 14;    // Bauhoehe ueber der Platine
+nodemcu_h        = 14;    // ANNAHME (grosszuegig): Gesamthoehe. Real eher ~6 mm -
+                          // die Reserve schadet nicht, das MOSFET-Modul ist hoeher.
 nodemcu_unterbau = 4.0;   // Freiraum fuer die Stiftleisten
 nodemcu_pos      = [90, 58];  // um 90 Grad gedreht: Micro-USB zeigt zur Rueckwand
                               // x >= 90 haelt Abstand zum MOSFET-Endanschlag
@@ -108,17 +113,19 @@ microusb_oeff_b  = 12;    // Wandausschnitt Breite
 microusb_oeff_h  = 8;     // Wandausschnitt Hoehe
 microusb_achse   = 1.35;  // Achshoehe der Buchse ueber der Platinenoberseite
 
-/* [Platine: LM2596 Buck-Converter] */
-buck_l        = 43;
-buck_b        = 21;
-buck_h        = 14;
-buck_unterbau = 3.0;
+/* [Platine: Mini560 Buck-Converter - GEMESSEN 30 x 18 x 6 mm] */
+buck_l        = 30;       // laengere Kante
+buck_b        = 18;       // kuerzere Kante - hier liegen die Loetpads
+buck_h        = 6;        // GEMESSEN: Gesamthoehe inkl. Platine
+buck_unterbau = 3.0;      // Freiraum fuer die Loetstellen der Durchkontaktierungen
 buck_pos      = [100, 6];     // um 90 Grad gedreht, rechte vordere Zone
+                              // -> Clipse greifen die langen Kanten, die
+                              //    Loetpad-Kanten bleiben frei zugaenglich
 
 /* [Platine: USB-C-PD-Triggerboard 31 x 20 mm] */
 pd_b          = 20;       // Kante MIT der USB-C-Buchse (liegt an der Frontwand, X)
 pd_l          = 30;       // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
-pd_h          = 4.0;      // Bauhoehe ueber der Platine
+pd_h          = 5.6;      // Gesamthoehe inkl. Platine (1,6 Platine + 4,0 Aufbau)
 pd_unterbau   = 3.0;
 pd_dicke      = 1.6;
 
@@ -159,7 +166,7 @@ pd_pos     = [innen_x/2 - pd_b/2, 0];   // Buchse exakt mittig in der Frontwand
 hoehe_bauteile = max(mosfet_unterbau + mosfet_h,
                      nodemcu_unterbau + nodemcu_h,
                      buck_unterbau + buck_h,
-                     pd_unterbau + pd_dicke + 2*usbc_achse);
+                     pd_unterbau + max(pd_h, pd_dicke + 2*usbc_achse));
 
 innen_z = hoehe_override > 0
         ? hoehe_override
@@ -289,7 +296,9 @@ module platine_halter(pos, gr, h_unter, klemm_achse = "x", anschlaege = []) {
 module platine_geist(pos, gr, h_unter, h_bauteil, dicke = 1.6) {
     %translate([pos[0], pos[1], h_unter]) {
         color("green")   cube([gr[0], gr[1], dicke]);
-        translate([0, 0, dicke]) color("dimgray") cube([gr[0], gr[1], h_bauteil]);
+        // h_bauteil ist die Gesamthoehe -> der Aufbau ist um die Platine niedriger
+        translate([0, 0, dicke])
+            color("dimgray") cube([gr[0], gr[1], max(h_bauteil - dicke, 0.1)]);
     }
 }
 

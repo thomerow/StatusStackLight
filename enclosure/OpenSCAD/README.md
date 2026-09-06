@@ -1,7 +1,7 @@
 # StatusStackLight – Gehäuse (OpenSCAD)
 
 Parametrisches, 3D-druckbares Gehäuse, das eine industrielle Signalsäule trägt und die
-Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, LM2596-Buck-Converter
+Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
 (12 V → 5 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
 
 **Stufe 1: zweiteilig** – Hauptkörper mit integriertem Deckel + abnehmbare Bodenplatte.
@@ -9,6 +9,7 @@ Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, LM2596-Buck-Convert
 | Datei | Inhalt |
 |---|---|
 | `statusstacklight_gehaeuse.scad` | komplettes Modell, alle Maße als Variablen am Dateianfang |
+| `render.ps1` | erzeugt STLs und Vorschaubilder über die Kommandozeile |
 | `body.stl` / `boden.stl` | exportierte Druckteile (aus den aktuellen Parametern) |
 | `preview/` | Rendering-Vorschauen |
 
@@ -53,17 +54,32 @@ Rundum bleibt Spiel: die Buchse wird geführt, nicht geklemmt.
 
 ## Nutzung
 
-```powershell
-# Vorschau: OpenSCAD öffnen und statusstacklight_gehaeuse.scad laden
-# (teil = "beides" zeigt beide Teile montiert, "explosion" auseinandergezogen)
+Alles, was das Repo enthält, entsteht mit einem Aufruf – **ohne die OpenSCAD-GUI**:
 
-$OS = "C:\Program Files\OpenSCAD\openscad.exe"
-& $OS -o body.stl  -D "teil=""body"""  statusstacklight_gehaeuse.scad
-& $OS -o boden.stl -D "teil=""boden""" statusstacklight_gehaeuse.scad
+```powershell
+.\render.ps1                 # body.stl, boden.stl und alle preview/*.png
+.\render.ps1 -Only Stl       # nur die Druckteile
+.\render.ps1 -Only Preview   # nur die Bilder (< 1 s pro Bild)
 ```
 
-Beim Kompilieren gibt die Datei die abgeleiteten Maße per `echo()` aus, unter anderem eine
-Kollisionsprüfung zwischen den Säulen-Insertdomen und der höchsten Baugruppe.
+Das Skript sucht `openscad.exe` selbst (sonst `-OpenScad <pfad>`) und gibt am Ende die
+abgeleiteten Maße und die Kollisionsprüfungen des Modells aus:
+
+```
+Innenmasse  : 134 x 116 x 31 mm
+Aussenmasse : 138.8 x 120.8 x 35.8 mm
+USB-C-Buchse: Stirn y=-1  Ansenkungsboden y=-1.2  Restwand=0.2 mm  -> OK
+Saeulendome : Unterkante z=21  hoechste Baugruppe z=19  -> OK
+```
+
+Zum Konstruieren die Datei wie gewohnt in der OpenSCAD-GUI öffnen; `teil` schaltet
+zwischen `"beides"`, `"body"`, `"boden"` und `"explosion"` um.
+
+> Stolperfalle für eigene Skripte: `openscad.exe` ist ein GUI-Subsystem-Binary und kehrt
+> **sofort** zurück, wenn PowerShell seine Ausgabe nicht über eine echte Pipeline
+> konsumiert – eine Zuweisung wie `$log = & $OS @args 2>&1` wartet **nicht** auf das Ende
+> des Renderns. `render.ps1` liest deshalb über `| ForEach-Object { "$_" }` und prüft
+> zusätzlich den Zeitstempel der geschriebenen Datei.
 
 `zeige_platinen = true` blendet die Platinen als transparente Geister ein (`%`) – sie sind
 im Rendering/STL **nicht** enthalten.
@@ -80,6 +96,11 @@ im Rendering/STL **nicht** enthalten.
 | `saeule_schrauben_n` | 4 | |
 | `pd_b` × `pd_l` | 20 × 30 | USB-C-PD-Triggerboard |
 | `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
+| `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
+
+> **Konvention:** alle `*_h` sind **Gesamthöhen inklusive Platine**, so wie man sie mit dem
+> Messschieber über das ganze Modul abgreift. `*_unterbau` ist der Abstand der
+> Platinenunterseite von der Trennebene.
 
 ### Noch offen
 
@@ -87,6 +108,7 @@ im Rendering/STL **nicht** enthalten.
 |---|---|---|
 | `saeule_kabel_d` | 12 | Durchmesser der zentralen Kabeldurchführung |
 | `nodemcu_unterbau` | 4,0 | erhöhen, falls die Stiftleisten weiter durchstehen |
+| `nodemcu_h` | 14 | großzügige Annahme, real eher ~6 mm. Schadet nichts – das MOSFET-Modul ist mit 19 mm ohnehin die höchste Baugruppe. |
 | `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
 
 Nach jeder Änderung genügt ein erneuter Export – Layout, Gehäusehöhe und alle Ausschnitte
@@ -98,7 +120,7 @@ werden neu berechnet.
 |---|---|---|---|
 | MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten |
 | NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
-| LM2596 | 21 × 43 | 100…121 / 6…49 | 90° gedreht, rechte vordere Zone |
+| Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei |
 | PD-Trigger | 20 × 30 | 57…77 / 0…30 | Buchse exakt mittig in der Frontwand (x = 67) |
 
 Die vordere linke Zone (x 12…50, y 0…40) bleibt frei für die Verdrahtung; die Lampenkabel
@@ -121,7 +143,7 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 
 1. Inserts in Hauptkörper einpressen (M3 in die Eckdome, M4 in die Säulendome von innen).
 2. Bodenplatte bestücken: MOSFET-Modul, NodeMCU, Buck und PD-Board in die Clipse drücken.
-3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Buck-Eingang, Buck-Ausgang 5 V → NodeMCU
+3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → NodeMCU
    (VIN/5V), GPIOs → MOSFET-Steuereingänge, gemeinsame Masse.
 4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen.
 5. Bodenplatte senkrecht von unten einführen (USB-C und Micro-USB gleiten in ihre Schlitze),
