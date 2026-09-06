@@ -12,7 +12,7 @@ Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, LM2596-Buck-Convert
 | `body.stl` / `boden.stl` | exportierte Druckteile (aus den aktuellen Parametern) |
 | `preview/` | Rendering-Vorschauen |
 
-Aktuelle Außenmaße: **138,8 × 120,8 × 34,8 mm** (Innenraum 134 × 116 × 30 mm).
+Aktuelle Außenmaße: **138,8 × 120,8 × 35,8 mm** (Innenraum 134 × 116 × 31 mm).
 
 ## Konstruktionsprinzip
 
@@ -36,8 +36,13 @@ Die Buchse sitzt mittig an einer 20-mm-Kante und tritt mittig durch die Frontwan
   bestückte Bodenplatte kollisionsfrei einfährt – und er druckt dadurch ohne Brücke.
 * Ein **Steckerkragen** auf der Bodenplatte füllt den Schlitz unterhalb der Öffnung wieder
   auf und bildet die Unterkante der sichtbaren Öffnung.
-* Eine **Außenansenkung** (17 mm breit, 1,2 mm tief) dünnt die Wand vor der Buchse aus,
-  sodass der Stecker praktisch bündig einrastet und die volle Steckerlänge greift.
+* Die Buchse **steht 1 mm über die Platinenkante** vor und taucht damit selbst in den
+  Wanddurchbruch ein.
+* Eine **Außenansenkung** (17 mm breit, 1,2 mm tief) dünnt die Wand vor der Buchse aus.
+  Zusammen mit dem Überstand bleiben nur noch **0,2 mm Restwand** vor der Steckermündung –
+  der Stecker rastet praktisch bündig ein und die volle Steckerlänge greift. Das Modell
+  prüft das beim Kompilieren (`usbc_luft`); die Ansenkung darf `wand − usbc_ueberstand`
+  nicht überschreiten.
 * **Kraftfluss:** Der **Sattel** unter der Platinenvorderkante nimmt Kräfte nach unten auf,
   die Clipse halten nach oben, die **Anschlagrippe** hinter der Platine nimmt die
   Einsteckkraft, und die Frontwand selbst (links und rechts der Öffnung liegt die
@@ -63,17 +68,26 @@ Kollisionsprüfung zwischen den Säulen-Insertdomen und der höchsten Baugruppe.
 `zeige_platinen = true` blendet die Platinen als transparente Geister ein (`%`) – sie sind
 im Rendering/STL **nicht** enthalten.
 
-## Noch anzupassende Maße
+## Maße
+
+### Gemessen und bestätigt
+
+| Variable | Wert | |
+|---|---|---|
+| `mosfet_h` | 16 | Bauhöhe des MOSFET-Moduls inkl. Schraubklemmen |
+| `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes (bestimmt den Zentrierring) |
+| `saeule_lochkreis_d` | 55 | |
+| `saeule_schrauben_n` | 4 | |
+| `pd_b` × `pd_l` | 20 × 30 | USB-C-PD-Triggerboard |
+| `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
+
+### Noch offen
 
 | Variable | aktuell | Anmerkung |
 |---|---|---|
-| `mosfet_h` | 15 | **Annahme.** Bauhöhe des MOSFET-Moduls inkl. Schraubklemmen nachmessen. Die Innenhöhe passt sich automatisch an. |
-| `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes (bestimmt den Zentrierring) |
-| `saeule_lochkreis_d` | 55 | gemessen |
-| `saeule_schrauben_n` | 4 | gemessen |
 | `saeule_kabel_d` | 12 | Durchmesser der zentralen Kabeldurchführung |
 | `nodemcu_unterbau` | 4,0 | erhöhen, falls die Stiftleisten weiter durchstehen |
-| `usbc_senk_t` | 1,2 | tiefer stellen, falls dein Stecker nicht ganz einrastet |
+| `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
 
 Nach jeder Änderung genügt ein erneuter Export – Layout, Gehäusehöhe und alle Ausschnitte
 werden neu berechnet.
@@ -85,7 +99,7 @@ werden neu berechnet.
 | MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten |
 | NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
 | LM2596 | 21 × 43 | 100…121 / 6…49 | 90° gedreht, rechte vordere Zone |
-| PD-Trigger | 20 × 31 | 57…77 / 0…31 | Buchse exakt mittig in der Frontwand (x = 67) |
+| PD-Trigger | 20 × 30 | 57…77 / 0…30 | Buchse exakt mittig in der Frontwand (x = 67) |
 
 Die vordere linke Zone (x 12…50, y 0…40) bleibt frei für die Verdrahtung; die Lampenkabel
 laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.

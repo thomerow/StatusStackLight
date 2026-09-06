@@ -61,7 +61,7 @@ lippe_h         = 4.0;
 lippe_dicke     = 1.2;
 
 /* [Signalsaeule - gemessen: Lochkreis 55 mm, 4 x M4, Fuss 70 mm] */
-saeule_fuss_d        = 70;    // Aussendurchmesser des Saeulenfusses
+saeule_fuss_d        = 70;    // GEMESSEN: Aussendurchmesser des Saeulenfusses
 saeule_lochkreis_d   = 55;    // GEMESSEN
 saeule_schrauben_n   = 4;     // GEMESSEN
 saeule_winkel_offset = 45;    // Winkellage der ersten Schraube [Grad]
@@ -93,7 +93,7 @@ pad_inset           = 5.0;    // Abstand Padmitte von der Platinenecke
 /* [Platine: 8-Kanal-MOSFET-Modul - gemessen 68 x 72 mm] */
 mosfet_l        = 72;     // laengere Kante (X)
 mosfet_b        = 68;     // kuerzere Kante (Y) - hier sitzen die Schraubklemmen
-mosfet_h        = 15;     // ANNAHME: Bauhoehe inkl. Klemmen - bitte nachmessen
+mosfet_h        = 16;     // GEMESSEN: Bauhoehe inkl. Schraubklemmen
 mosfet_unterbau = 3.0;
 mosfet_pos      = [12, 42];   // Klemmkanten zeigen zur linken/rechten Seitenwand
 
@@ -117,13 +117,15 @@ buck_pos      = [100, 6];     // um 90 Grad gedreht, rechte vordere Zone
 
 /* [Platine: USB-C-PD-Triggerboard 31 x 20 mm] */
 pd_b          = 20;       // Kante MIT der USB-C-Buchse (liegt an der Frontwand, X)
-pd_l          = 31;       // Kante ohne Buchse (ragt ins Gehaeuse, Y)
+pd_l          = 30;       // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
 pd_h          = 4.0;      // Bauhoehe ueber der Platine
 pd_unterbau   = 3.0;
 pd_dicke      = 1.6;
 
 /* [USB-C-Buchse] */
 usbc_achse       = 1.65;  // Achshoehe der Buchse ueber der Platinenoberseite
+usbc_ueberstand  = 1.0;   // GEMESSEN: Ueberstand der Buchse ueber die Platinenkante
+                          //           -> die Buchse taucht in den Wanddurchbruch ein
 usbc_oeff_b      = 13.5;  // Wanddurchbruch Breite (Steckergehaeuse + Spiel)
 usbc_oeff_h      = 7.5;   // Wanddurchbruch Hoehe
 usbc_senk_b      = 17.0;  // Aussenansenkung Breite
@@ -174,6 +176,12 @@ usbc_z   = pd_unterbau + pd_dicke + usbc_achse;   // Achshoehe ueber der Trenneb
 usbc_o_u = usbc_z - usbc_oeff_h/2;                // Unterkante Durchbruch
 usbc_o_o = usbc_z + usbc_oeff_h/2;                // Oberkante Durchbruch
 
+// Laengsschnitt durch die Frontwand (y):  -wand .. -wand+usbc_senk_t = Ansenkung,
+// darin taucht die Buchse mit usbc_ueberstand von innen ein.
+usbc_stirn      = -usbc_ueberstand;         // Stirnflaeche der Buchse
+usbc_senkboden  = -wand + usbc_senk_t;      // Boden der Aussenansenkung
+usbc_luft       = usbc_stirn - usbc_senkboden;   // Restwand vor der Buchse
+
 // Micro-USB
 mu_x   = nodemcu_pos[0] + nodemcu_gr[0]/2;
 mu_z   = nodemcu_unterbau + pcb_dicke + microusb_achse;
@@ -191,6 +199,9 @@ echo(str("Aussenmasse : ", aussen_x, " x ", aussen_y, " x ", aussen_z, " mm"));
 echo(str("USB-C       : x=", usbc_x, "  Achse z=", usbc_z,
          "  Durchbruch z ", usbc_o_u, " .. ", usbc_o_o));
 echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
+echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
+         "  Restwand=", usbc_luft, " mm",
+         (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
 echo(str("Saeulendome : Unterkante z=", innen_z - saeule_dom_l,
          "  hoechste Baugruppe z=", hoehe_bauteile,
          (innen_z - saeule_dom_l >= hoehe_bauteile) ? "  -> OK" : "  -> KOLLISION!"));
