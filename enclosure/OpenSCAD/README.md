@@ -4,6 +4,12 @@ Parametrisches, 3D-druckbares Gehäuse, das eine industrielle Signalsäule träg
 Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
 (12 V → 5 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
 
+**Die Säule hat 5 Lampen.** Genutzt werden also nur 5 der 8 MOSFET-Kanäle; die restlichen
+drei bleiben absichtlich frei. Das 8-Kanal-Modul steckt trotzdem drin, weil es vorhanden
+war – es ist mit 68 × 72 × 16 mm das größte Bauteil und bestimmt damit sowohl die
+Innenmaße als auch die Innenhöhe des Gehäuses. Wer die Kiste kleiner haben will, setzt
+dort an, nicht beim Mikrocontroller.
+
 **Stufe 1: zweiteilig** – Hauptkörper mit integriertem Deckel + abnehmbare Bodenplatte.
 
 | Datei | Inhalt |
@@ -132,7 +138,7 @@ werden neu berechnet.
 
 | Baugruppe | Maße | Fläche X / Y | Bemerkung |
 |---|---|---|---|
-| MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten |
+| MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten. Nur 5 Kanäle belegt (5 Lampen), 3 bleiben frei. Höchste Baugruppe – gibt die Innenhöhe vor. |
 | NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
 | Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei |
 | PD-Trigger | 20 × 30 | 57…77 / 0…30 | Buchse exakt mittig in der Frontwand (x = 67) |
@@ -159,7 +165,8 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 2. Bodenplatte bestücken: MOSFET-Modul, NodeMCU, Buck und PD-Board in die Clipse drücken.
 3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → NodeMCU
    (VIN/5V), GPIOs → MOSFET-Steuereingänge, gemeinsame Masse.
-4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen.
+4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen –
+   5 Lampen, also 5 belegte Kanäle plus gemeinsame Rückleitung.
 5. Bodenplatte senkrecht von unten einführen (USB-C und Micro-USB gleiten in ihre Schlitze),
    mit 4 × M3-Senkkopf verschrauben.
 6. Signalsäule mittig auf den Deckel setzen und mit 4 × M4 verschrauben – die Schrauben
