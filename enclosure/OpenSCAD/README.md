@@ -159,12 +159,50 @@ laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
 * Heat-Set-Inserts: 4 × M3 (Ø 4,0 × 6 mm) in den Eckdomen, 4 × M4 (Ø 5,6 × 8 mm) in den
   Säulendomen. Alternativ `saeule_insert = false` für reine Durchgangslöcher.
 
+## Pinbelegung (NodeMCU V3 / ESP8266)
+
+| Kanal | Pin | GPIO |
+|---|---|---|
+| 1 | **D1** | GPIO5 |
+| 2 | **D2** | GPIO4 |
+| 3 | **D5** | GPIO14 |
+| 4 | **D6** | GPIO12 |
+| 5 | **D7** | GPIO13 |
+
+Das sind genau die fünf Pins des ESP8266, die beim Start unbeteiligt sind: keine
+Strapping-Funktion, keine LED, kein Pull-up oder Pull-down auf dem Board, beim Boot
+hochohmig, PWM- und interruptfähig.
+
+**Nicht** die naheliegenden Reihen D0–D4 oder D1–D5 verwenden – beide enthalten die zwei
+kritischen Pins:
+
+* **D3 = GPIO0** entscheidet beim Reset über den Bootmodus und hat dafür einen Pull-up.
+  Der typische 10-kΩ-Pulldown am Eingang eines MOSFET-Moduls zieht dagegen: der ESP geht
+  dann in den Flash-Modus und startet die Firmware **nicht**. Der Fehler tritt gern
+  sporadisch auf und ist entsprechend unangenehm zu finden.
+* **D4 = GPIO2** muss beim Boot ebenfalls HIGH sein und trägt die blaue LED des
+  ESP-12-Moduls – die Lampe an diesem Kanal ginge bei jedem Reset an.
+
+**D0 = GPIO16** ist kein Boot-Problem, hängt aber am RTC-Block statt am normalen
+GPIO-Peripheriemodul: kein Interrupt, je nach Framework kein PWM. Nur als Ausweichpin.
+
+Auch die fünf empfohlenen Pins sind beim Boot Eingänge, das Gate schwebt also für die
+ersten paar hundert Millisekunden. Hat das MOSFET-Modul keine Pulldowns an den
+Steuereingängen, je 10 kΩ nach Masse nachrüsten – auf D1/D2/D5/D6/D7 ohne Nebenwirkung.
+
+Wird später I²C gebraucht (SCL = D1, SDA = D2), rücken diese beiden Lampen auf **D8**
+(GPIO15, unkritisch: Pulldown an Bord, beim Boot ohnehin LOW) und **D0**. D3 und D4
+bleiben in jedem Fall tabu.
+
+> Bei einem Wechsel auf ein ESP32-C3-Board (z. B. SuperMini) entsprechend GPIO 3, 4, 5, 6, 7
+> – dort sind 2, 8 und 9 die Strapping-Pins.
+
 ## Montagereihenfolge
 
 1. Inserts in Hauptkörper einpressen (M3 in die Eckdome, M4 in die Säulendome von innen).
 2. Bodenplatte bestücken: MOSFET-Modul, NodeMCU, Buck und PD-Board in die Clipse drücken.
 3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → NodeMCU
-   (VIN/5V), GPIOs → MOSFET-Steuereingänge, gemeinsame Masse.
+   (VIN/5V), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
 4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen –
    5 Lampen, also 5 belegte Kanäle plus gemeinsame Rückleitung.
 5. Bodenplatte senkrecht von unten einführen (USB-C und Micro-USB gleiten in ihre Schlitze),
