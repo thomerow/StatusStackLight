@@ -118,6 +118,7 @@ im Rendering/STL **nicht** enthalten.
 | `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
 | `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
 | `nodemcu_unterbau` | 4,0 | Kabel werden direkt angelötet, keine Stiftleisten – 4 mm sind reichlich Luft für die Lötstellen. Bis 5,0 kostet das keine Gehäusehöhe. |
+| `saeule_kabel_d` | 12 | zentrale Kabeldurchführung im Deckel, passt für die Adern der 5 Lampen |
 
 > **Konvention:** alle `*_h` sind **Gesamthöhen inklusive Platine**, so wie man sie mit dem
 > Messschieber über das ganze Modul abgreift. `*_unterbau` ist der Abstand der
@@ -127,7 +128,6 @@ im Rendering/STL **nicht** enthalten.
 
 | Variable | aktuell | Anmerkung |
 |---|---|---|
-| `saeule_kabel_d` | 12 | Durchmesser der zentralen Kabeldurchführung |
 | `nodemcu_h` | 14 | großzügige Annahme, real eher ~6 mm. Schadet nichts – das MOSFET-Modul ist mit 19 mm ohnehin die höchste Baugruppe. |
 | `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
 
