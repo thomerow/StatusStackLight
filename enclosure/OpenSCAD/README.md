@@ -125,6 +125,7 @@ im Rendering/STL **nicht** enthalten.
 | `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
 | `mcu_l` × `mcu_b` × `mcu_h` | 57,3 × 28,1 × 5,0 | ESP32-S3 DevKitC-1 N16R8; Höhe = 1,6 Platine + 3,4 Aufbau |
 | `mcu_antenne` | 6,3 | Überstand des Modul-Antennenendes über die Platinenkante |
+| `mcu_anschlag_ueber` | −0,2 | Oberkante des Endanschlags relativ zur Platinenoberseite. Negativ, damit eine Zehntel Drucküberhöhung die Platinenvorderkante nicht anhebt; der Anschlag greift weiterhin über 1,4 der 1,6 mm Kante. |
 | `mcu_unterbau` | 3,0 | Kabel werden von oben in die Lötaugen geführt, die Lötpunkte tragen also nach unten auf |
 | `mcu_usb_rand` / `mcu_com_rand` | 8,0 / 19,5 | Buchsenmitten von der im Gehäuse **rechten** Platinenkante |
 | `saeule_kabel_d` | 12 | zentrale Kabeldurchführung im Deckel, passt für die Adern der 5 Lampen |

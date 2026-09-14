@@ -119,7 +119,10 @@ mcu_antenne      = 6.3;   // GEMESSEN: das Modul steht mit seinem Antennenende u
                           // die Platinenkante hinaus. Es liegt auf Hoehe der
                           // Platinenoberseite - der Endanschlag darunter darf
                           // deshalb nicht darueber hinausragen (mcu_anschlag_ueber).
-mcu_anschlag_ueber = 0;   // buendig mit der Platinenoberseite, Antenne kommt frei
+mcu_anschlag_ueber = -0.2;// 0,2 mm UNTER der Platinenoberseite. Exakt buendig (0)
+                          // waere ideal, nur wuerde ein Zehntel Druckueberhoehung
+                          // die Platinenvorderkante anheben. Bei -0,2 greift der
+                          // Anschlag immer noch ueber 1,4 der 1,6 mm Kante.
 mcu_pad_inset    = [8, 5];// Auflagepads in X weiter nach innen als der Standard:
                           // an den Laengskanten liegen die Loetaugen, deren
                           // Loetpunkte sonst auf den Pads aufsetzen wuerden.
@@ -305,8 +308,10 @@ echo(str("MCU-Text    : ~", mcu_text_breite, " mm breit, Schriftmitten ",
                              : "  -> zu eng, mcu_text_spreizung hoch oder Groesse runter!"));
 echo(str("MCU-Anschlag: Oberkante z=", mcu_pcb_oben + mcu_anschlag_ueber,
          "  Platinenoberseite z=", mcu_pcb_oben,
-         (mcu_anschlag_ueber <= 0) ? "  -> buendig, Antenne frei"
-                                   : "  -> ragt ueber, Antenne kollidiert!"));
+         "  Eingriff in die Kante=", min(pcb_dicke, pcb_dicke + mcu_anschlag_ueber), " mm",
+         (mcu_anschlag_ueber > 0)    ? "  -> ragt ueber, Antenne kollidiert!" :
+         (mcu_anschlag_ueber < -0.8) ? "  -> Eingriff wird duenn"
+                                     : "  -> OK, Antenne frei"));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
