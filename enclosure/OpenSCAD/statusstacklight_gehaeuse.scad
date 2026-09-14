@@ -109,20 +109,47 @@ mosfet_h        = 16;     // GEMESSEN: Gesamthoehe inkl. Platine und Schraubklem
 mosfet_unterbau = 3.0;
 mosfet_pos      = [12, 42];   // Klemmkanten zeigen zur linken/rechten Seitenwand
 
-/* [Platine: Lolin NodeMCU V3] */
-nodemcu_l        = 58;    // Laenge
-nodemcu_b        = 31.5;  // Breite
-nodemcu_h        = 14;    // ANNAHME (grosszuegig): Gesamthoehe. Real eher ~6 mm -
-                          // die Reserve schadet nicht, das MOSFET-Modul ist hoeher.
-nodemcu_unterbau = 4.0;   // Kabel werden direkt angeloetet, keine Stiftleisten:
-                          // 4 mm sind reichlich Luft fuer die Loetstellen. Bis 5,0
-                          // kostet das keine Gehaeusehoehe (dann uebernimmt der
-                          // NodeMCU von Modul als hoechste Baugruppe).
-nodemcu_pos      = [90, 58];  // um 90 Grad gedreht: Micro-USB zeigt zur Rueckwand
-                              // x >= 90 haelt Abstand zum MOSFET-Endanschlag
-microusb_oeff_b  = 12;    // Wandausschnitt Breite
-microusb_oeff_h  = 8;     // Wandausschnitt Hoehe
-microusb_achse   = 1.35;  // Achshoehe der Buchse ueber der Platinenoberseite
+/* [Platine: ESP32-S3 DevKitC-1 N16R8 - GEMESSEN 57,3 x 28,1 x 1,6 mm] */
+mcu_l            = 57.3;  // GEMESSEN: Platinenlaenge OHNE Antennenueberstand
+mcu_b            = 28.1;  // GEMESSEN
+mcu_h            = 5.0;   // Gesamthoehe inkl. Platine (1,6 + 3,4 gemessen)
+mcu_unterbau     = 3.0;   // Kabel werden von oben in die Loetaugen gefuehrt, die
+                          // Loetpunkte tragen also nach UNTEN auf.
+mcu_antenne      = 6.3;   // GEMESSEN: das Modul steht mit seinem Antennenende ueber
+                          // die Platinenkante hinaus. Es liegt auf Hoehe der
+                          // Platinenoberseite - der Endanschlag darunter darf
+                          // deshalb nicht darueber hinausragen (mcu_anschlag_ueber).
+mcu_anschlag_ueber = 0;   // buendig mit der Platinenoberseite, Antenne kommt frei
+mcu_pad_inset    = [8, 5];// Auflagepads in X weiter nach innen als der Standard:
+                          // an den Laengskanten liegen die Loetaugen, deren
+                          // Loetpunkte sonst auf den Pads aufsetzen wuerden.
+mcu_pos          = [90, innen_y - mcu_l];   // um 90 Grad gedreht, USB-Seite an der
+                          // Rueckwand, Antenne zeigt nach vorn ins Gehaeuse.
+                          // x >= 90 haelt Abstand zum MOSFET-Endanschlag
+
+// Beide USB-C-Buchsen sitzen an derselben Schmalseite. Gemessen wurde von der
+// Platinenkante, die im Gehaeuse RECHTS liegt (Blick von hinten auf die
+// Rueckwand = von der USB-Seite auf die Platine, da ist es die linke).
+mcu_usb_rand     = 8.0;   // Buchsenmitte "USB" (nativ)  von der rechten Kante
+mcu_com_rand     = 19.5;  // Buchsenmitte "COM" (UART)   von der rechten Kante
+mcu_usb_achse    = 1.65;  // Achshoehe der Buchsen ueber der Platinenoberseite
+mcu_usb_oeff_b   = 13.5;  // Durchbruchbreite je Stecker
+mcu_usb_oeff_h   = 7.5;   // Durchbruchhoehe
+
+/* [Beschriftung der USB-Buchsen auf dem Deckel] */
+mcu_text         = true;
+mcu_text_groesse = 4.5;
+mcu_text_spreizung = 1.6; // Die Buchsenmitten liegen nur 11,5 mm auseinander, bei
+                          // lesbarer Schriftgroesse stossen "USB" und "COM"
+                          // aneinander. Die Beschriftung wird deshalb um diesen
+                          // Faktor auseinandergezogen - links/rechts bleibt
+                          // eindeutig zugeordnet, es sind ja nur zwei.
+                          // 1.0 = exakt ueber den Buchsenmitten.
+mcu_text_tiefe   = 0.6;   // Vertiefung. Der Koerper wird auf dem Deckel gedruckt,
+                          // die Schrift liegt also am Druckbett und wird sauber.
+mcu_text_abstand = 4.0;   // Mitte der Schrift vor der Rueckwand-Innenkante
+mcu_text_drehung = 180;   // 180 = liest sich von hinten, wo man steckt
+mcu_text_font    = "Liberation Sans:style=Bold";
 
 /* [Platine: Mini560 Buck-Converter - GEMESSEN 30 x 18 x 6 mm] */
 buck_l        = 30;       // laengere Kante
@@ -186,13 +213,13 @@ aussen_y = innen_y + 2*wand;
 innen_r  = max(0.6, ecken_r - wand);
 
 mosfet_gr  = [mosfet_l, mosfet_b];      // Klemmen an den Y-Kanten
-nodemcu_gr = [nodemcu_b, nodemcu_l];    // 90 Grad gedreht
+mcu_gr     = [mcu_b, mcu_l];            // 90 Grad gedreht
 buck_gr    = [buck_b, buck_l];          // 90 Grad gedreht
 pd_gr      = [pd_b, pd_l];
 pd_pos     = [innen_x/2 - pd_b/2, 0];   // Buchse exakt mittig in der Frontwand
 
 hoehe_bauteile = max(mosfet_unterbau + mosfet_h,
-                     nodemcu_unterbau + nodemcu_h,
+                     mcu_unterbau + mcu_h,
                      buck_unterbau + buck_h,
                      pd_unterbau + max(pd_h, pd_dicke + 2*usbc_achse));
 
@@ -218,10 +245,22 @@ usbc_senkboden  = -wand + usbc_senk_t;      // Boden der Aussenansenkung
 usbc_luft       = usbc_stirn - usbc_senkboden;   // Restwand vor der Buchse
 
 // Micro-USB
-mu_x   = nodemcu_pos[0] + nodemcu_gr[0]/2;
-mu_z   = nodemcu_unterbau + pcb_dicke + microusb_achse;
-mu_o_u = mu_z - microusb_oeff_h/2;
-mu_o_o = mu_z + microusb_oeff_h/2;
+// Die Buchsenmitten werden von der rechten Platinenkante aus gemessen.
+mcu_usb_x = mcu_pos[0] + mcu_b - mcu_usb_rand;
+mcu_com_x = mcu_pos[0] + mcu_b - mcu_com_rand;
+mcu_z     = mcu_unterbau + pcb_dicke + mcu_usb_achse;
+mcu_o_u   = mcu_z - mcu_usb_oeff_h/2;
+mcu_o_o   = mcu_z + mcu_usb_oeff_h/2;
+
+// Ein gemeinsamer Durchbruch fuer beide Buchsen statt zweier Einzelfenster:
+// die Stege dazwischen waeren nur gut 1 mm breit und im Druck wertlos.
+mcu_oeff_l = min(mcu_usb_x, mcu_com_x) - mcu_usb_oeff_b/2;
+mcu_oeff_r = max(mcu_usb_x, mcu_com_x) + mcu_usb_oeff_b/2;
+mcu_oeff_b = mcu_oeff_r - mcu_oeff_l;
+
+// Vorderkante der Antenne und Oberkante des Endanschlags darunter
+mcu_antenne_y = mcu_pos[1] - mcu_antenne;
+mcu_pcb_oben  = mcu_unterbau + pcb_dicke;
 
 // Wirksame Ringhoehe: geht in die Laenge der Deckeldurchbrueche ein, damit
 // diese den Ring durchstossen - ohne Ring waeren es unnoetige Ueberlaengen.
@@ -245,7 +284,29 @@ echo(str("Aussenmasse : ", aussen_x, " x ", aussen_y, " x ", aussen_z, " mm",
          saeule_zentrierring ? str(" + ", saeule_ring_h, " mm Zentrierring") : " (Deckel plan)"));
 echo(str("USB-C       : x=", usbc_x, "  Achse z=", usbc_z,
          "  Durchbruch z ", usbc_o_u, " .. ", usbc_o_o));
-echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
+echo(str("MCU         : ", mcu_b, " x ", mcu_l, " bei x=", mcu_pos[0],
+         " y=", mcu_pos[1], "  Antenne bis y=", mcu_antenne_y));
+echo(str("MCU-USB     : USB x=", mcu_usb_x, "  COM x=", mcu_com_x,
+         "  Durchbruch x ", mcu_oeff_l, " .. ", mcu_oeff_r,
+         " (", mcu_oeff_b, " mm)  Achse z=", mcu_z));
+// Auseinandergezogene Schriftmitten
+mcu_text_mitte = (mcu_usb_x + mcu_com_x) / 2;
+mcu_text_usb_x = mcu_text_mitte + (mcu_usb_x - mcu_text_mitte) * mcu_text_spreizung;
+mcu_text_com_x = mcu_text_mitte + (mcu_com_x - mcu_text_mitte) * mcu_text_spreizung;
+
+// Textbreite laesst sich in OpenSCAD nicht messen. 0,95 x Groesse je Zeichen ist
+// fuer Liberation Sans Bold in Grossbuchstaben am gerenderten Bild nachgemessen -
+// die vorher angesetzten 0,62 waren deutlich zu optimistisch.
+mcu_text_breite = 3 * 0.95 * mcu_text_groesse;
+mcu_text_luft   = abs(mcu_text_usb_x - mcu_text_com_x) - mcu_text_breite;
+echo(str("MCU-Text    : ~", mcu_text_breite, " mm breit, Schriftmitten ",
+         abs(mcu_text_usb_x - mcu_text_com_x), " auseinander  Luft=", mcu_text_luft, " mm",
+         (mcu_text_luft > 2) ? "  -> OK"
+                             : "  -> zu eng, mcu_text_spreizung hoch oder Groesse runter!"));
+echo(str("MCU-Anschlag: Oberkante z=", mcu_pcb_oben + mcu_anschlag_ueber,
+         "  Platinenoberseite z=", mcu_pcb_oben,
+         (mcu_anschlag_ueber <= 0) ? "  -> buendig, Antenne frei"
+                                   : "  -> ragt ueber, Antenne kollidiert!"));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
@@ -292,10 +353,12 @@ module klemme(h_unter, dicke, haken_u, breite = klemm_b) {
         prisma_x(breite, [[0, hb], [haken_u, hb], [0, hb + klemm_haken_h]]);
 }
 
-// Endanschlag ohne Haken
-module anschlag(breite, h_unter, dicke) {
+// Endanschlag ohne Haken. ueber = Ueberstand ueber die Platinenoberseite;
+// 0 macht ihn buendig, noetig wenn ein Bauteil ueber die Kante hinausragt.
+module anschlag(breite, h_unter, dicke, ueber = undef) {
+    u = is_undef(ueber) ? anschlag_ueber : ueber;
     translate([-breite/2, -dicke, 0])
-        cube([breite, dicke, h_unter + pcb_dicke + anschlag_ueber]);
+        cube([breite, dicke, h_unter + pcb_dicke + u]);
 }
 
 // Positioniert children() an einer Platinenkante (lokal: Kante y=0, Platine y>0)
@@ -312,9 +375,15 @@ module an_kante(pos, gr, seite, entlang) {
 }
 
 // Auflagepads unter den Platinenecken - halten Loetstellen vom Boden fern
-module pcb_pads(pos, gr, h_unter) {
+// versatz: Abstand der Padmitte von der Platinenecke. Zahl = beide Achsen,
+// [x, y] = getrennt. Getrennt ist noetig, wenn die Loetaugen nur an einem
+// Kantenpaar liegen: dann weichen die Pads nur in dieser Achse nach innen aus
+// und die Auflage bleibt in der anderen so breit wie moeglich.
+module pcb_pads(pos, gr, h_unter, versatz = undef) {
     px = pos[0]; py = pos[1]; sx = gr[0]; sy = gr[1];
-    for (dx = [pad_inset, sx - pad_inset], dy = [pad_inset, sy - pad_inset])
+    v  = is_undef(versatz) ? [pad_inset, pad_inset]
+       : is_list(versatz)  ? versatz : [versatz, versatz];
+    for (dx = [v[0], sx - v[0]], dy = [v[1], sy - v[1]])
         translate([px + dx - pad_d/2, py + dy - pad_d/2, 0])
             cube([pad_d, pad_d, h_unter]);
 }
@@ -329,10 +398,13 @@ module pcb_pads(pos, gr, h_unter) {
 //     zwei Klemmen bei 28 % und 72 % der Kantenlaenge mit klemm_b Breite.
 //     Damit lassen sich einzelne Klemmen um Bauteile herumlegen, ohne die
 //     Symmetrie fuer alle anderen Platinen aufzugeben.
+//   anschlag_hoehe : Ueberstand der Endanschlaege, undef = anschlag_ueber
+//   pad_versatz    : siehe pcb_pads()
 module platine_halter(pos, gr, h_unter, klemm_achse = "x", anschlaege = [],
-                      klemmen_fest = [], klemmen_feder = []) {
+                      klemmen_fest = [], klemmen_feder = [],
+                      anschlag_hoehe = undef, pad_versatz = undef) {
     sx = gr[0]; sy = gr[1];
-    pcb_pads(pos, gr, h_unter);
+    pcb_pads(pos, gr, h_unter, pad_versatz);
 
     kante = (klemm_achse == "x") ? sy : sx;
     std   = [[kante*0.28, klemm_b], [kante*0.72, klemm_b]];
@@ -350,7 +422,7 @@ module platine_halter(pos, gr, h_unter, klemm_achse = "x", anschlaege = [],
     for (s = anschlaege) {
         laenge = (s == "vorn" || s == "hinten") ? sx : sy;
         an_kante(pos, gr, s, laenge/2)
-            anschlag(laenge*0.5, h_unter, anschlag_dicke);
+            anschlag(laenge*0.5, h_unter, anschlag_dicke, anschlag_hoehe);
     }
 }
 
@@ -378,10 +450,23 @@ module usbc_negativ() {
             cube([usbc_senk_b, usbc_senk_t + eps, usbc_o_o + usbc_senk_rand + eps]);
 }
 
-// Micro-USB des NodeMCU in der Rueckwand, ebenfalls nach unten offen
-module microusb_negativ() {
-    translate([mu_x - microusb_oeff_b/2, innen_y - 1, -eps])
-        cube([microusb_oeff_b, wand + 2, mu_o_o + eps]);
+// Beide USB-C-Buchsen des MCU in der Rueckwand - ein gemeinsames Fenster,
+// ebenfalls nach unten offen, damit die bestueckte Bodenplatte einfahren kann.
+module mcu_usb_negativ() {
+    translate([mcu_oeff_l, innen_y - 1, -eps])
+        cube([mcu_oeff_b, wand + 2, mcu_o_o + eps]);
+}
+
+// Vertiefte Beschriftung der beiden Buchsen auf der Deckelaussenseite
+module mcu_beschriftung() {
+    if (mcu_text)
+        for (b = [["USB", mcu_text_usb_x], ["COM", mcu_text_com_x]])
+            translate([b[1], innen_y - mcu_text_abstand,
+                       innen_z + deckel_dicke - mcu_text_tiefe])
+                rotate([0, 0, mcu_text_drehung])
+                    linear_extrude(height = mcu_text_tiefe + eps)
+                        text(b[0], size = mcu_text_groesse, halign = "center",
+                             valign = "center", font = mcu_text_font);
 }
 
 module lueftung_negativ() {
@@ -492,7 +577,8 @@ module hauptkoerper() {
         eckdom_bohrungen();
         deckel_negativ();
         usbc_negativ();
-        microusb_negativ();
+        mcu_usb_negativ();
+        mcu_beschriftung();
         lueftung_negativ();
     }
 }
@@ -519,10 +605,10 @@ module usbc_kragen() {
         cube([pd_b, usbc_sattel_t, pd_unterbau]);
 }
 
-module microusb_fueller() {
-    f = spiel;
-    translate([mu_x - (microusb_oeff_b - 2*f)/2, innen_y, 0])
-        cube([microusb_oeff_b - 2*f, wand, mu_o_u]);
+module mcu_usb_fueller() {
+    f = usbc_kragen_spiel;
+    translate([mcu_oeff_l + f, innen_y, 0])
+        cube([mcu_oeff_b - 2*f, wand, mcu_o_u]);
 }
 
 // Anschlagrippe hinter dem PD-Board - nimmt die Steckkraefte ueber die
@@ -569,16 +655,19 @@ module lippe_negativ() {
     // Unterbrechung vor dem PD-Board (Frontwand)
     translate([pd_pos[0] - 4, -1, -eps])
         cube([pd_b + 8, lippe_dicke + spiel + 2, lippe_h + 2*eps]);
-    // Unterbrechung hinter dem NodeMCU (Rueckwand)
-    translate([nodemcu_pos[0] - 4, innen_y - lippe_dicke - spiel - 1, -eps])
-        cube([nodemcu_gr[0] + 8, lippe_dicke + spiel + 2, lippe_h + 2*eps]);
+    // Unterbrechung hinter dem MCU (Rueckwand)
+    translate([mcu_pos[0] - 4, innen_y - lippe_dicke - spiel - 1, -eps])
+        cube([mcu_gr[0] + 8, lippe_dicke + spiel + 2, lippe_h + 2*eps]);
 }
 
 module platinen_halterungen() {
     // MOSFET: Klemmkanten seitlich -> Clipse vorne/hinten, Anschlaege seitlich
     platine_halter(mosfet_pos, mosfet_gr, mosfet_unterbau, "y", ["links", "rechts"]);
-    // NodeMCU: Rueckkante liegt an der Wand -> nur vorne ein Anschlag
-    platine_halter(nodemcu_pos, nodemcu_gr, nodemcu_unterbau, "x", ["vorn"]);
+    // MCU: Rueckkante liegt an der Wand -> nur vorne ein Anschlag, und der
+    // muss buendig mit der Platinenoberseite bleiben (Antennenueberstand).
+    platine_halter(mcu_pos, mcu_gr, mcu_unterbau, "x", ["vorn"],
+                   anschlag_hoehe = mcu_anschlag_ueber,
+                   pad_versatz    = mcu_pad_inset);
     // Buck-Converter: vordere linke Leiste versetzt und schmaler, siehe Parameter
     platine_halter(buck_pos, buck_gr, buck_unterbau, "x", ["vorn", "hinten"],
                    klemmen_fest = [[buck_gr[1]*0.28 - buck_klemm_vl_versatz, buck_klemm_vl_breite],
@@ -597,7 +686,7 @@ module boden() {
                 difference() { lippe_koerper(); lippe_negativ(); }
             platinen_halterungen();
             usbc_kragen();
-            microusb_fueller();
+            mcu_usb_fueller();
             pd_anschlagrippe();
         }
         // Verschraubung mit kegeliger Senkung von unten
@@ -613,7 +702,10 @@ module boden() {
 module platinen() {
     if (zeige_platinen) {
         platine_geist(mosfet_pos,  mosfet_gr,  mosfet_unterbau,  mosfet_h);
-        platine_geist(nodemcu_pos, nodemcu_gr, nodemcu_unterbau, nodemcu_h);
+        platine_geist(mcu_pos, mcu_gr, mcu_unterbau, mcu_h);
+        // ueberstehendes Antennenende des Moduls
+        %translate([mcu_pos[0], mcu_antenne_y, mcu_pcb_oben])
+            color("darkgreen") cube([mcu_b, mcu_antenne, 1.0]);
         platine_geist(buck_pos,    buck_gr,    buck_unterbau,    buck_h);
         platine_geist(pd_pos,      pd_gr,      pd_unterbau,      pd_h, pd_dicke);
     }

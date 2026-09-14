@@ -1,7 +1,7 @@
 # StatusStackLight – Gehäuse (OpenSCAD)
 
 Parametrisches, 3D-druckbares Gehäuse, das eine industrielle Signalsäule trägt und die
-Elektronik aufnimmt: Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
+Elektronik aufnimmt: ESP32-S3 DevKitC-1 (N16R8), 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
 (12 V → 5 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
 
 **Die Säule hat 5 Lampen.** Genutzt werden also nur 5 der 8 MOSFET-Kanäle; die restlichen
@@ -123,7 +123,10 @@ im Rendering/STL **nicht** enthalten.
 | `pd_b` × `pd_l` | 20 × 31,5 | USB-C-PD-Triggerboard |
 | `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
 | `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
-| `nodemcu_unterbau` | 4,0 | Kabel werden direkt angelötet, keine Stiftleisten – 4 mm sind reichlich Luft für die Lötstellen. Bis 5,0 kostet das keine Gehäusehöhe. |
+| `mcu_l` × `mcu_b` × `mcu_h` | 57,3 × 28,1 × 5,0 | ESP32-S3 DevKitC-1 N16R8; Höhe = 1,6 Platine + 3,4 Aufbau |
+| `mcu_antenne` | 6,3 | Überstand des Modul-Antennenendes über die Platinenkante |
+| `mcu_unterbau` | 3,0 | Kabel werden von oben in die Lötaugen geführt, die Lötpunkte tragen also nach unten auf |
+| `mcu_usb_rand` / `mcu_com_rand` | 8,0 / 19,5 | Buchsenmitten von der im Gehäuse **rechten** Platinenkante |
 | `saeule_kabel_d` | 12 | zentrale Kabeldurchführung im Deckel, passt für die Adern der 5 Lampen |
 
 > **Konvention:** alle `*_h` sind **Gesamthöhen inklusive Platine**, so wie man sie mit dem
@@ -134,7 +137,6 @@ im Rendering/STL **nicht** enthalten.
 
 | Variable | aktuell | Anmerkung |
 |---|---|---|
-| `nodemcu_h` | 14 | großzügige Annahme, real eher ~6 mm. Schadet nichts – das MOSFET-Modul ist mit 19 mm ohnehin die höchste Baugruppe. |
 | `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
 
 Nach jeder Änderung genügt ein erneuter Export – Layout, Gehäusehöhe und alle Ausschnitte
@@ -145,7 +147,7 @@ werden neu berechnet.
 | Baugruppe | Maße | Fläche X / Y | Bemerkung |
 |---|---|---|---|
 | MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten. Nur 5 Kanäle belegt (5 Lampen), 3 bleiben frei. Höchste Baugruppe – gibt die Innenhöhe vor. |
-| NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
+| ESP32-S3 | 28,1 × 57,3 | 90…118,1 / 58,7…116 | 90° gedreht, beide USB-C durch die Rückwand. Das Antennenende des Moduls ragt bis y = 52,4 über die Platinenkante hinaus |
 | Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei. Vordere **linke** Auflageleiste versetzt, siehe unten |
 | PD-Trigger | 20 × 31,5 | 57…77 / 0…31,5 | Buchse exakt mittig in der Frontwand (x = 67) |
 
@@ -186,53 +188,62 @@ für alle anderen Platinen aufzugeben.
 * Heat-Set-Inserts: 4 × M3 (Ø 4,0 × 6 mm) in den Eckdomen, 4 × M4 (Ø 5,6 × 8 mm) in den
   Säulendomen. Alternativ `saeule_insert = false` für reine Durchgangslöcher.
 
-## Pinbelegung (NodeMCU V3 / ESP8266)
+## Pinbelegung (ESP32-S3 DevKitC-1, N16R8)
 
-| Kanal | Pin | GPIO |
-|---|---|---|
-| 1 | **D1** | GPIO5 |
-| 2 | **D2** | GPIO4 |
-| 3 | **D5** | GPIO14 |
-| 4 | **D6** | GPIO12 |
-| 5 | **D7** | GPIO13 |
+| Kanal | GPIO |
+|---|---|
+| 1 | **4** |
+| 2 | **5** |
+| 3 | **6** |
+| 4 | **7** |
+| 5 | **15** |
 
-Das sind genau die fünf Pins des ESP8266, die beim Start unbeteiligt sind: keine
-Strapping-Funktion, keine LED, kein Pull-up oder Pull-down auf dem Board, beim Boot
-hochohmig, PWM- und interruptfähig.
+Beim S3 ist PWM kein Thema mehr: der LEDC-Block hat 16 unabhängige Kanäle mit bis zu
+14 Bit, und **jeder** GPIO kann darauf geroutet werden. Fünf gedimmte Lampen sind damit
+ein Dreizeiler – genau der Grund für den Wechsel.
 
-**Nicht** die naheliegenden Reihen D0–D4 oder D1–D5 verwenden – beide enthalten die zwei
-kritischen Pins:
+### Finger weg von
 
-* **D3 = GPIO0** entscheidet beim Reset über den Bootmodus und hat dafür einen Pull-up.
-  Der typische 10-kΩ-Pulldown am Eingang eines MOSFET-Moduls zieht dagegen: der ESP geht
-  dann in den Flash-Modus und startet die Firmware **nicht**. Der Fehler tritt gern
-  sporadisch auf und ist entsprechend unangenehm zu finden.
-* **D4 = GPIO2** muss beim Boot ebenfalls HIGH sein und trägt die blaue LED des
-  ESP-12-Moduls – die Lampe an diesem Kanal ginge bei jedem Reset an.
+| Pin | Warum |
+|---|---|
+| **35, 36, 37** | **Octal-PSRAM.** Das `R8` in N16R8 steht für 8 MB PSRAM, und die läuft über genau diese drei Pins. Bei den Quad-Varianten wären sie frei – bei dieser nicht. |
+| 26–32 | SPI-Flash des Moduls |
+| 0, 3, 45, 46 | Strapping-Pins (Bootmodus, JTAG-Quelle, VDD_SPI) |
+| 19, 20 | native USB-Datenleitungen (die „USB"-Buchse) |
+| 43, 44 | UART0, die „COM"-Buchse |
+| 38 (bzw. 48) | Onboard-RGB-LED. DevKitC-1 v1.1 nutzt GPIO38, v1.0 GPIO48; bei Klonen variiert das – im Zweifel beide probieren. |
 
-**D0 = GPIO16** ist kein Boot-Problem, hängt aber am RTC-Block statt am normalen
-GPIO-Peripheriemodul: kein Interrupt, je nach Framework kein PWM. Nur als Ausweichpin.
+Die fünf empfohlenen Pins sind beim Boot hochohmig. Hat das MOSFET-Modul keine Pulldowns
+an den Steuereingängen, je 10 kΩ nach Masse nachrüsten, sonst kann es beim Einschalten
+kurz flackern.
 
-Auch die fünf empfohlenen Pins sind beim Boot Eingänge, das Gate schwebt also für die
-ersten paar hundert Millisekunden. Hat das MOSFET-Modul keine Pulldowns an den
-Steuereingängen, je 10 kΩ nach Masse nachrüsten – auf D1/D2/D5/D6/D7 ohne Nebenwirkung.
+## Beschriftung der USB-Buchsen
 
-Wird später I²C gebraucht (SCL = D1, SDA = D2), rücken diese beiden Lampen auf **D8**
-(GPIO15, unkritisch: Pulldown an Bord, beim Boot ohnehin LOW) und **D0**. D3 und D4
-bleiben in jedem Fall tabu.
+Auf der Deckeloberseite sitzt vertiefter Text (`mcu_text_tiefe` = 0,6 mm) über den beiden
+Buchsen. Um 180° gedreht, liest sich also **von hinten** – dort, wo man steckt.
 
-> Bei einem Wechsel auf ein ESP32-C3-Board (z. B. SuperMini) entsprechend GPIO 3, 4, 5, 6, 7
-> – dort sind 2, 8 und 9 die Strapping-Pins.
+Die Buchsenmitten liegen nur 11,5 mm auseinander; bei lesbarer Schriftgröße stoßen „USB"
+und „COM" aneinander. Die Beschriftung wird deshalb über `mcu_text_spreizung` (1,6) gegen
+die Mitte auseinandergezogen. Bei nur zwei Buchsen bleibt die Zuordnung links/rechts
+eindeutig. `1.0` setzt sie exakt über die Buchsenmitten – dann muss `mcu_text_groesse`
+unter etwa 3,5 mm.
+
+Das Modell schätzt die Textbreite ab (0,95 × Größe je Zeichen, am Rendering nachgemessen)
+und warnt beim Kompilieren, wenn es zu eng wird. Messen kann OpenSCAD Text nicht.
+
+Gedruckt wird der Hauptkörper auf dem Deckel stehend – die Schrift liegt also am
+Druckbett und kommt sauber heraus, ohne Stützen.
+
 
 ## Montagereihenfolge
 
 1. Inserts in Hauptkörper einpressen (M3 in die Eckdome, M4 in die Säulendome von innen).
-2. Bodenplatte bestücken: MOSFET-Modul, NodeMCU, Buck und PD-Board in die Clipse drücken.
-3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → NodeMCU
-   (VIN/5V), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
+2. Bodenplatte bestücken: MOSFET-Modul, ESP32-S3, Buck und PD-Board in die Clipse drücken.
+3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → ESP32-S3
+   (5V-Pin), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
 4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen –
    5 Lampen, also 5 belegte Kanäle plus gemeinsame Rückleitung.
-5. Bodenplatte senkrecht von unten einführen (USB-C und Micro-USB gleiten in ihre Schlitze),
+5. Bodenplatte senkrecht von unten einführen (alle drei USB-C-Buchsen gleiten in ihre Schlitze),
    mit 4 × M3-Senkkopf verschrauben.
 6. Signalsäule mittig auf den Deckel setzen und mit 4 × M4 verschrauben – die Schrauben
    auf dem 55er Lochkreis übernehmen die Zentrierung.
