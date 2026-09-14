@@ -157,6 +157,12 @@ usbc_oeff_h      = 7.5;   // Wanddurchbruch Hoehe
 usbc_senk_b      = 17.0;  // Aussenansenkung Breite
 usbc_senk_t      = 1.2;   // Aussenansenkung Tiefe -> Stecker taucht fast buendig ein
 usbc_senk_rand   = 1.5;   // Ansenkung ragt oben ueber den Durchbruch hinaus
+usbc_kragen_spiel= 0.4;   // Passung des Steckerkragens. Eigener Wert statt des
+                          // allgemeinen spiel: links und rechts des Durchbruchs
+                          // haengen zwei nur 1,75 mm schmale Wandzungen nach
+                          // unten, die in die Kerben zwischen Zunge und Stufe
+                          // fassen. Mit 0,2 mm war das im Druck eine Presspassung
+                          // und musste nachgeschliffen werden.
 usbc_sattel_t    = 5.0;   // Tiefe des Sattels unter der Platinenvorderkante
 usbc_rippe_dicke = 3.0;   // Anschlagrippe hinter der Platine (nimmt Steckkraefte)
 usbc_rippe_luecke= 10.0;  // mittige Luecke darin: die Loetaugen des PD-Boards
@@ -243,6 +249,10 @@ echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
+echo(str("USB-C-Kragen: Zunge ", usbc_oeff_b - 2*usbc_kragen_spiel, " in ", usbc_oeff_b,
+         ", Stufe ", usbc_senk_b - 2*usbc_kragen_spiel, " in ", usbc_senk_b,
+         "  Kerbenluft=", usbc_kragen_spiel, " mm je Flanke",
+         (usbc_kragen_spiel >= 0.3) ? "  -> OK" : "  -> im Druck vermutlich stramm"));
 echo(str("Buck-Leiste : vorne links y=", buck_pos[1] + buck_gr[1]*0.28 - buck_klemm_vl_versatz,
          " (", buck_klemm_vl_breite, " mm breit), hinten links y=",
          buck_pos[1] + buck_gr[1]*0.72, "  Rand zur Platinenvorderkante=",
@@ -496,7 +506,7 @@ module hauptkoerper() {
 // die Steckkraefte ueber die Bodenplatte in die Verschraubung - nicht in die
 // Loetstellen der Buchse.
 module usbc_kragen() {
-    f = spiel;
+    f = usbc_kragen_spiel;
     // Zunge im Durchbruch
     translate([usbc_x - (usbc_oeff_b - 2*f)/2, -wand + usbc_senk_t, 0])
         cube([usbc_oeff_b - 2*f, wand - usbc_senk_t, usbc_o_u]);
