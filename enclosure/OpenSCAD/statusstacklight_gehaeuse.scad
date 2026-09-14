@@ -135,7 +135,7 @@ buck_pos      = [100, 6];     // um 90 Grad gedreht, rechte vordere Zone
 
 /* [Platine: USB-C-PD-Triggerboard 31 x 20 mm] */
 pd_b          = 20;       // Kante MIT der USB-C-Buchse (liegt an der Frontwand, X)
-pd_l          = 30;       // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
+pd_l          = 31;       // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
 pd_h          = 5.6;      // Gesamthoehe inkl. Platine (1,6 Platine + 4,0 Aufbau)
 pd_unterbau   = 3.0;
 pd_dicke      = 1.6;
