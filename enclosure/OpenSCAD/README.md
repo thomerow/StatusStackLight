@@ -120,7 +120,7 @@ im Rendering/STL **nicht** enthalten.
 | `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes; bestimmt die Deckelverstärkung (Fuß + 10 mm) auf der Innenseite |
 | `saeule_lochkreis_d` | 55 | |
 | `saeule_schrauben_n` | 4 | |
-| `pd_b` × `pd_l` | 20 × 30 | USB-C-PD-Triggerboard |
+| `pd_b` × `pd_l` | 20 × 31,5 | USB-C-PD-Triggerboard |
 | `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
 | `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
 | `nodemcu_unterbau` | 4,0 | Kabel werden direkt angelötet, keine Stiftleisten – 4 mm sind reichlich Luft für die Lötstellen. Bis 5,0 kostet das keine Gehäusehöhe. |
@@ -147,7 +147,7 @@ werden neu berechnet.
 | MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten. Nur 5 Kanäle belegt (5 Lampen), 3 bleiben frei. Höchste Baugruppe – gibt die Innenhöhe vor. |
 | NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
 | Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei. Vordere **linke** Auflageleiste versetzt, siehe unten |
-| PD-Trigger | 20 × 30 | 57…77 / 0…30 | Buchse exakt mittig in der Frontwand (x = 67) |
+| PD-Trigger | 20 × 31,5 | 57…77 / 0…31,5 | Buchse exakt mittig in der Frontwand (x = 67) |
 
 Die vordere linke Zone (x 12…50, y 0…40) bleibt frei für die Verdrahtung; die Lampenkabel
 laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
