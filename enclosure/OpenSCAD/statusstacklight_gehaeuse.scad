@@ -133,9 +133,17 @@ buck_pos      = [100, 6];     // um 90 Grad gedreht, rechte vordere Zone
                               // -> Clipse greifen die langen Kanten, die
                               //    Loetpad-Kanten bleiben frei zugaenglich
 
+// Sonderfall vordere linke Auflageleiste (Draufsicht auf die Bodenplatte, der
+// USB-C-Eingang unten): auf der linken Platinenkante sitzt ein Bauteil buendig
+// mit der Kante, die Leiste greift dort nicht. Sie rueckt deshalb nach vorn -
+// dort liegt aber die Loetstelle des Plus-Eingangs, also wird sie zugleich
+// schmaler. 0 / klemm_b stellt den symmetrischen Standard wieder her.
+buck_klemm_vl_versatz = 3.0;  // nach vorn (-Y)
+buck_klemm_vl_breite  = 4.0;  // statt klemm_b (6.0)
+
 /* [Platine: USB-C-PD-Triggerboard 31 x 20 mm] */
 pd_b          = 20;       // Kante MIT der USB-C-Buchse (liegt an der Frontwand, X)
-pd_l          = 31;       // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
+pd_l          = 31.5;     // GEMESSEN: Kante ohne Buchse (ragt ins Gehaeuse, Y)
 pd_h          = 5.6;      // Gesamthoehe inkl. Platine (1,6 Platine + 4,0 Aufbau)
 pd_unterbau   = 3.0;
 pd_dicke      = 1.6;
@@ -235,6 +243,10 @@ echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
+echo(str("Buck-Leiste : vorne links y=", buck_pos[1] + buck_gr[1]*0.28 - buck_klemm_vl_versatz,
+         " (", buck_klemm_vl_breite, " mm breit), hinten links y=",
+         buck_pos[1] + buck_gr[1]*0.72, "  Rand zur Platinenvorderkante=",
+         buck_gr[1]*0.28 - buck_klemm_vl_versatz - buck_klemm_vl_breite/2, " mm"));
 echo(str("PD-Rippe    : 2 x ", (pd_b + 4 - usbc_rippe_luecke)/2,
          " mm breit, Luecke ", usbc_rippe_luecke, " mm mittig fuer die Loetaugen",
          ((pd_b + 4 - usbc_rippe_luecke)/2 >= 4) ? "  -> OK" : "  -> Segmente zu schmal!"));
@@ -262,12 +274,12 @@ module prisma_x(breite, pts) {
 // Klemme: Kante der Platine liegt bei y = 0, die Platine selbst bei y > 0.
 // Der Haken greift mit haken_u ueber die Platine, die Oberseite ist als
 // 45-Grad-Fase ausgefuehrt (Einfuehrschraege beim Eindruecken).
-module klemme(h_unter, dicke, haken_u) {
+module klemme(h_unter, dicke, haken_u, breite = klemm_b) {
     hb = h_unter + pcb_dicke + pcb_spiel_z;    // Unterkante des Rasthakens
-    translate([-klemm_b/2, -dicke, 0])
-        cube([klemm_b, dicke, hb + klemm_haken_h]);
-    translate([-klemm_b/2, 0, 0])
-        prisma_x(klemm_b, [[0, hb], [haken_u, hb], [0, hb + klemm_haken_h]]);
+    translate([-breite/2, -dicke, 0])
+        cube([breite, dicke, hb + klemm_haken_h]);
+    translate([-breite/2, 0, 0])
+        prisma_x(breite, [[0, hb], [haken_u, hb], [0, hb + klemm_haken_h]]);
 }
 
 // Endanschlag ohne Haken
@@ -302,20 +314,28 @@ module pcb_pads(pos, gr, h_unter) {
 //   klemm_achse : "x" -> Klemmen an der linken/rechten Kante
 //                 "y" -> Klemmen an der vorderen/hinteren Kante
 //   anschlaege  : Liste der Kanten, die einen Endanschlag bekommen
-module platine_halter(pos, gr, h_unter, klemm_achse = "x", anschlaege = []) {
+//   klemmen_fest / klemmen_feder : optionale Liste [[position, breite], ...]
+//     je Klemme, Position entlang der Kante gemessen. Leer = Standard, also
+//     zwei Klemmen bei 28 % und 72 % der Kantenlaenge mit klemm_b Breite.
+//     Damit lassen sich einzelne Klemmen um Bauteile herumlegen, ohne die
+//     Symmetrie fuer alle anderen Platinen aufzugeben.
+module platine_halter(pos, gr, h_unter, klemm_achse = "x", anschlaege = [],
+                      klemmen_fest = [], klemmen_feder = []) {
     sx = gr[0]; sy = gr[1];
     pcb_pads(pos, gr, h_unter);
 
-    if (klemm_achse == "x")
-        for (p = [sy*0.28, sy*0.72]) {
-            an_kante(pos, gr, "links",  p) klemme(h_unter, klemm_dicke_fest,  klemm_haken_fest);
-            an_kante(pos, gr, "rechts", p) klemme(h_unter, klemm_dicke_feder, klemm_haken_feder);
-        }
-    else
-        for (p = [sx*0.28, sx*0.72]) {
-            an_kante(pos, gr, "vorn",   p) klemme(h_unter, klemm_dicke_fest,  klemm_haken_fest);
-            an_kante(pos, gr, "hinten", p) klemme(h_unter, klemm_dicke_feder, klemm_haken_feder);
-        }
+    kante = (klemm_achse == "x") ? sy : sx;
+    std   = [[kante*0.28, klemm_b], [kante*0.72, klemm_b]];
+    kf    = (len(klemmen_fest)  > 0) ? klemmen_fest  : std;
+    kd    = (len(klemmen_feder) > 0) ? klemmen_feder : std;
+
+    s_fest  = (klemm_achse == "x") ? "links"  : "vorn";
+    s_feder = (klemm_achse == "x") ? "rechts" : "hinten";
+
+    for (k = kf)
+        an_kante(pos, gr, s_fest,  k[0]) klemme(h_unter, klemm_dicke_fest,  klemm_haken_fest,  k[1]);
+    for (k = kd)
+        an_kante(pos, gr, s_feder, k[0]) klemme(h_unter, klemm_dicke_feder, klemm_haken_feder, k[1]);
 
     for (s = anschlaege) {
         laenge = (s == "vorn" || s == "hinten") ? sx : sy;
@@ -549,8 +569,10 @@ module platinen_halterungen() {
     platine_halter(mosfet_pos, mosfet_gr, mosfet_unterbau, "y", ["links", "rechts"]);
     // NodeMCU: Rueckkante liegt an der Wand -> nur vorne ein Anschlag
     platine_halter(nodemcu_pos, nodemcu_gr, nodemcu_unterbau, "x", ["vorn"]);
-    // Buck-Converter
-    platine_halter(buck_pos, buck_gr, buck_unterbau, "x", ["vorn", "hinten"]);
+    // Buck-Converter: vordere linke Leiste versetzt und schmaler, siehe Parameter
+    platine_halter(buck_pos, buck_gr, buck_unterbau, "x", ["vorn", "hinten"],
+                   klemmen_fest = [[buck_gr[1]*0.28 - buck_klemm_vl_versatz, buck_klemm_vl_breite],
+                                   [buck_gr[1]*0.72, klemm_b]]);
     // PD-Board: Vorderkante stuetzt sich an der Frontwand ab, hinten die Rippe
     platine_halter(pd_pos, pd_gr, pd_unterbau, "x", []);
 }

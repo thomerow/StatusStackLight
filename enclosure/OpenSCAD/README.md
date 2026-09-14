@@ -146,11 +146,32 @@ werden neu berechnet.
 |---|---|---|---|
 | MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten. Nur 5 Kanäle belegt (5 Lampen), 3 bleiben frei. Höchste Baugruppe – gibt die Innenhöhe vor. |
 | NodeMCU V3 | 31,5 × 58 | 90…121,5 / 58…116 | 90° gedreht, Micro-USB durch die Rückwand |
-| Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei |
+| Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei. Vordere **linke** Auflageleiste versetzt, siehe unten |
 | PD-Trigger | 20 × 30 | 57…77 / 0…30 | Buchse exakt mittig in der Frontwand (x = 67) |
 
 Die vordere linke Zone (x 12…50, y 0…40) bleibt frei für die Verdrahtung; die Lampenkabel
 laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
+
+### Sonderfall: vordere linke Auflageleiste des Mini560
+
+Auf der linken Platinenkante des Mini560 (Draufsicht auf die Bodenplatte, der
+USB-C-Eingang unten) sitzt ein Bauteil bündig mit der Kante – die Auflageleiste greift
+dort nicht. Sie rückt deshalb **3 mm nach vorn** (`buck_klemm_vl_versatz`) und ist
+zugleich **4 statt 6 mm breit** (`buck_klemm_vl_breite`), weil sie sonst der Lötstelle des
+Plus-Eingangs im Weg wäre. Zur Platinenvorderkante bleiben damit 3,4 mm.
+
+| Klemme | y | Breite |
+|---|---|---|
+| links hinten | 27,6 | 6,0 |
+| rechts hinten | 27,6 | 6,0 |
+| rechts vorn | 14,4 | 6,0 |
+| **links vorn** | **11,4** | **4,0** |
+
+Möglich wird das durch die optionalen Parameter `klemmen_fest` / `klemmen_feder` von
+`platine_halter()`: eine Liste `[[position, breite], …]` je Kante. Ohne Angabe bleibt es
+beim symmetrischen Standard (zwei Klemmen bei 28 % und 72 % der Kantenlänge, je `klemm_b`
+breit), sodass sich einzelne Klemmen um Bauteile herumlegen lassen, ohne die Symmetrie
+für alle anderen Platinen aufzugeben.
 
 ## Druckempfehlung
 
