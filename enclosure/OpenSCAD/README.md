@@ -68,6 +68,12 @@ Die Buchse sitzt mittig an einer 20-mm-Kante und tritt mittig durch die Frontwan
   Einsteckkraft, und die Frontwand selbst (links und rechts der Öffnung liegt die
   Platinenkante an) hält beim Herausziehen dagegen. Die Lötstellen der Buchse werden
   in keiner Richtung belastet.
+* **Die Anschlagrippe ist zweigeteilt** (`usbc_rippe_luecke`, 10 mm): die Lötaugen des
+  PD-Boards sitzen hinten mittig, die Kabel brauchen dort einen Ausgang nach hinten.
+  Übrig bleiben zwei Segmente von je 7 mm an den hinteren Platinenecken. Für den
+  Kraftfluss ist das kein Verlust, eher das Gegenteil – die Einsteckkraft geht jetzt in
+  die Ecken statt in die Mitte, die Platine wird also nicht mehr auf Biegung belastet.
+  `usbc_rippe_luecke = 0` stellt die durchgehende Rippe wieder her.
 
 Rundum bleibt Spiel: die Buchse wird geführt, nicht geklemmt.
 

@@ -151,6 +151,9 @@ usbc_senk_t      = 1.2;   // Aussenansenkung Tiefe -> Stecker taucht fast buendi
 usbc_senk_rand   = 1.5;   // Ansenkung ragt oben ueber den Durchbruch hinaus
 usbc_sattel_t    = 5.0;   // Tiefe des Sattels unter der Platinenvorderkante
 usbc_rippe_dicke = 3.0;   // Anschlagrippe hinter der Platine (nimmt Steckkraefte)
+usbc_rippe_luecke= 10.0;  // mittige Luecke darin: die Loetaugen des PD-Boards
+                          // sitzen hinten mittig, die Kabel muessen dort nach
+                          // hinten heraus. 0 = durchgehende Rippe.
 
 /* [Lueftung] */
 lueftung          = true;
@@ -232,6 +235,9 @@ echo(str("Micro-USB   : x=", mu_x, "  Achse z=", mu_z));
 echo(str("USB-C-Buchse: Stirn y=", usbc_stirn, "  Ansenkungsboden y=", usbc_senkboden,
          "  Restwand=", usbc_luft, " mm",
          (usbc_luft >= 0) ? "  -> OK" : "  -> Ansenkung schneidet die Buchse an!"));
+echo(str("PD-Rippe    : 2 x ", (pd_b + 4 - usbc_rippe_luecke)/2,
+         " mm breit, Luecke ", usbc_rippe_luecke, " mm mittig fuer die Loetaugen",
+         ((pd_b + 4 - usbc_rippe_luecke)/2 >= 4) ? "  -> OK" : "  -> Segmente zu schmal!"));
 echo(str("Senkung     : ", senkung_winkel, " Grad, Tiefe ", senk_t_ges,
          " mm  Restboden=", senk_rest, " mm",
          (senk_rest >= 0.6) ? "  -> OK" : "  -> zu duenn, boden_dicke erhoehen!"));
@@ -491,9 +497,17 @@ module microusb_fueller() {
 
 // Anschlagrippe hinter dem PD-Board - nimmt die Steckkraefte ueber die
 // Platinenkante auf, nicht ueber die Loetpads der Buchse
+// Zwei Segmente statt einer durchgehenden Rippe - mittig bleibt Platz fuer die
+// Kabel an den Loetaugen. Die Steckkraft laeuft dadurch ueber die beiden
+// hinteren Platinenecken statt ueber die Mitte. Das kommt der Platine eher
+// entgegen: sie wird nicht mehr auf Biegung belastet.
 module pd_anschlagrippe() {
-    translate([pd_pos[0] - 2, pd_pos[1] + pd_l + pcb_spiel/2, 0])
-        cube([pd_b + 4, usbc_rippe_dicke, pd_unterbau + pd_dicke + anschlag_ueber]);
+    gesamt = pd_b + 4;
+    seg    = max((gesamt - usbc_rippe_luecke) / 2, 0.01);
+    hoehe  = pd_unterbau + pd_dicke + anschlag_ueber;
+    y      = pd_pos[1] + pd_l + pcb_spiel/2;
+    for (x = [pd_pos[0] - 2, pd_pos[0] - 2 + gesamt - seg])
+        translate([x, y, 0]) cube([seg, usbc_rippe_dicke, hoehe]);
 }
 
 // Schraubloch der Bodenplatte: Durchgang + kegelige Senkung von aussen.
