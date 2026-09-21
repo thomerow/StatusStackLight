@@ -194,6 +194,19 @@ Octal-PSRAM). Das ähnlich heißende WROOM-**2** N16R8**V** hat Octal-Flash mit 
 den Aufdruck auf dem Modul lesen. Die Startmeldung gibt die PSRAM-Größe aus; stehen dort
 statt rund 8 MB null Bytes, stimmt die Einstellung nicht.
 
+### Wenn der Build abbricht
+
+**`ModuleNotFoundError: No module named 'intelhex'`** beim Erzeugen von `bootloader.bin`:
+Das mitgelieferte esptool 4.9 braucht dieses Python-Paket, PlatformIOs eigene Umgebung bringt
+es aber nicht mit. Einmalig nachinstallieren:
+
+```powershell
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m pip install intelhex
+```
+
+**Merkwürdige Fehler beim Öffnen von Dateien**: zuerst den Umlaut im Projektpfad verdächtigen
+(siehe `build_dir` oben), bevor man im Quelltext sucht.
+
 ## Aufbau
 
 ```
