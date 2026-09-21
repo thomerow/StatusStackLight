@@ -249,10 +249,35 @@ nicht die Grenze – sein LEDC-Block käme bei 12 Bit bis 19,5 kHz.
 Nicht zu verwechseln mit dem `frequency`-Feld einer Lampe: das ist der Blink- bzw.
 Pulsiertakt (0.1–20 Hz) und hat mit der PWM-Trägerfrequenz nichts zu tun.
 
-## Offen
+## Anzeige der Claude-Code-Sessions
 
-Das Hook-Skript `~/.claude/stacklight.ps1`, das die Säule bisher angesteuert hat, benutzt die
-alte API (`/api/set?ch=0-4&val=0|1`). Diese Firmware macht einen **sauberen Schnitt** und
-bildet sie nicht nach. Bis das Skript auf `/api/lamps/<farbe>/on|off` umgestellt ist, zeigt
-die Säule keinen Session-Status an. Die weiße Präsenzlampe kann dann endlich gedimmt laufen
-(`?brightness=15`) – das war der Grund, warum sie bisher abgeschaltet war.
+Angesteuert wird die Säule von `~/.claude/stacklight.ps1`, das über Hooks in
+`~/.claude/settings.json` hängt (liegt außerhalb dieses Repos). Jede Session legt ihren
+Zustand als Datei unter `~/.claude/stacklight/` ab; daraus wird berechnet, was die Lampen
+zeigen, und in **einem** `POST /api/lamps` gesetzt.
+
+| Lampe | Zustand | Darstellung |
+|---|---|---|
+| weiß | bereit – Session offen, nichts los | dauerhaft, 12 % |
+| grün | fertig – gerade fertig geworden | dauerhaft, 45 % |
+| blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
+| orange | wartet auf dich | blinkend, 1,2 Hz, 100 % |
+| rot | Fehler | dauerhaft, 100 %, rastet bis zum nächsten Prompt |
+
+Genau eine von bereit/fertig/arbeitet/wartet brennt (Rangfolge von rechts nach links), rot
+liegt unabhängig darüber. Grün fällt nach fünf Minuten auf weiß zurück – „frisch fertig" ist
+eine andere Information als „steht schon eine Weile da".
+
+Weiß läuft mit 12 %, die übrigen deutlich höher: Die weiße Lampe ist mit Abstand die
+hellste und braucht viel weniger Prozent, um gleich hell zu wirken. Genau das war bisher
+nicht möglich und der eigentliche Anlass für die PWM-Regelung – ungedimmt ist Weiß als
+Dauerlicht nicht zu ertragen.
+
+Zum Ausprobieren ohne Hooks:
+
+```powershell
+$s = "$HOME\.claude\stacklight.ps1"
+& $s -Event Status      # zeigt, was die Säule zeigen sollte, ohne etwas zu schalten
+& $s -Event SelfTest    # Kanal-Durchlauf der Firmware, danach zurück in den Istzustand
+& $s -Event AllOff
+```
