@@ -43,8 +43,10 @@ fünf eine gemeinsame Zeitbasis.
 | 4 | 7 | orange | `orange` |
 | 5 | 15 | rot | `red` |
 
-Wird umverdrahtet oder eine Lampe getauscht, lässt sich die Zuordnung mit dem
-[Kanal-Durchlauf](#diagnose) kontrollieren. Stimmt sie nicht mehr, werden in
+Diese Zuordnung ist am 21.09.2026 gegen die aufgebaute Säule geprüft und stimmt.
+
+Wird umverdrahtet oder eine Lampe getauscht, lässt sie sich mit dem
+[Kanal-Durchlauf](#diagnose) erneut kontrollieren. Stimmt sie nicht mehr, werden in
 `include/config.h` die Zeilen der Tabelle `LAMPEN[]` getauscht – sonst nichts.
 
 ## WLAN einrichten

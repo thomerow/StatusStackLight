@@ -38,6 +38,8 @@ struct LampenKanal {
 
 // Reihenfolge = Kanalnummer 1...5 (wie in der Gehaeuse-README).
 //
+// GEPRUEFT: 21.09.2026 gegen die aufgebaute Saeule - diese Zuordnung stimmt.
+//
 // Wird einmal umverdrahtet oder eine Lampe getauscht, ist der Kanal-Durchlauf
 // im Web-Interface der schnellste Weg zur Kontrolle: leuchtet dabei eine
 // andere Lampe als angesagt, werden hier die Zeilen getauscht und sonst
