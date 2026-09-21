@@ -2,8 +2,7 @@
 
 Firmware für die 5-Lampen-Signalsäule. Sie stellt eine HTTP-JSON-API zur Ansteuerung der
 Lampen bereit und ein Web-Interface, mit dem sich jede Lampe einzeln in allen Parametern
-durchspielen lässt – gedacht sowohl zum Prüfen der Verkabelung als auch als Grundlage für
-die spätere Anbindung.
+durchspielen lässt.
 
 Das Gehäuse und die Mechanik liegen im Nachbarverzeichnis [`../Gehäuse`](../Geh%C3%A4use).
 
@@ -44,33 +43,37 @@ fünf eine gemeinsame Zeitbasis.
 | 4 | 7 | orange | `orange` |
 | 5 | 15 | rot | `red` |
 
-Diese Zuordnung stammt aus der bisher produktiv laufenden Ansteuerung und war **nie gegen
-die Hardware geprüft**. Genau dafür gibt es den Kanal-Durchlauf (siehe unten). Stimmt etwas
-nicht, werden in `include/config.h` die Zeilen der Tabelle `LAMPEN[]` getauscht – sonst
-nichts.
+Wird umverdrahtet oder eine Lampe getauscht, lässt sich die Zuordnung mit dem
+[Kanal-Durchlauf](#diagnose) kontrollieren. Stimmt sie nicht mehr, werden in
+`include/config.h` die Zeilen der Tabelle `LAMPEN[]` getauscht – sonst nichts.
 
-## Erstinbetriebnahme
+## WLAN einrichten
 
-1. **Flashen** (siehe [Bauen und flashen](#bauen-und-flashen)).
-2. Beim ersten Start findet das Gerät keine WLAN-Zugangsdaten und spannt einen offenen
-   Accesspoint **`StatusStackLight-XXXX`** auf (`XXXX` = die letzten beiden Bytes der
-   MAC-Adresse, siehe serielle Konsole).
-3. Mit dem Handy verbinden – die Konfigurationsseite öffnet sich als Captive Portal von
-   selbst. Falls nicht: `http://192.168.4.1/setup`.
-4. Netz auswählen, Passwort eingeben, speichern. Das Gerät **probiert die Daten erst aus**
+Zugangsdaten stehen im NVS, nicht im Quelltext. Findet das Gerät dort keine – frisch
+geflasht, auf einem anderen Board oder nach `POST /api/reset` –, spannt es selbst einen
+offenen Accesspoint auf:
+
+1. Accesspoint **`StatusStackLight-XXXX`** erscheint in der WLAN-Liste (`XXXX` = die letzten
+   beiden Bytes der MAC-Adresse, steht auch auf der seriellen Konsole).
+2. Verbinden – die Konfigurationsseite öffnet sich als Captive Portal von selbst. Falls
+   nicht: `http://192.168.4.1/setup`.
+3. Netz auswählen, Passwort eingeben, speichern. Das Gerät **probiert die Daten erst aus**
    und speichert sie nur, wenn die Verbindung zustande kommt – ein Tippfehler sperrt dich
    also nicht aus. Deshalb dauert die Antwort bis zu 20 Sekunden.
-5. Danach ist es unter **`http://statusstacklight.local/`** erreichbar (bzw. unter der IP,
+4. Danach ist es unter **`http://statusstacklight.local/`** erreichbar (bzw. unter der IP,
    die die Konfigurationsseite meldet – Android löst `.local` nicht zuverlässig auf).
 
-Die Lampen funktionieren auch im Accesspoint-Modus. Die Verkabelung lässt sich damit
-vollständig ohne vorhandenes WLAN prüfen.
+Reißt die Verbindung im Betrieb ab, versucht das Gerät es selbstständig weiter; bleibt es
+länger als zwei Minuten erfolglos, geht der Konfig-AP wieder auf. Die Lampen laufen dabei
+unverändert weiter, und die API ist über die AP-Adresse erreichbar – die Säule lässt sich
+also auch ohne WLAN vollständig bedienen.
 
-## Verkabelung prüfen
+## Diagnose
 
 Im Web-Interface unten: **Kanal-Durchlauf**. Er schaltet die Kanäle 1 bis 5 nacheinander für
 je eine Sekunde einzeln ein und meldet dabei auf der seriellen Konsole, welche Farbe erwartet
-wird:
+wird – der schnellste Weg, nach einem Lampenwechsel oder bei Verdacht auf einen
+Wackelkontakt jeden Kanal einzeln zu sehen:
 
 ```
 [durchlauf] Kanal 1  GPIO  4  erwartet: weiss
@@ -80,17 +83,15 @@ wird:
 
 Danach wird der vorherige Zustand wiederhergestellt. Auch per API: `GET /api/sweep`.
 
-Worauf beim ersten Test zu achten ist:
+Wenn ein Kanal auffällig ist:
 
-- **Direkt nach dem Reset** müssen alle fünf GPIOs auf 3,3 V liegen (= aus), ohne kurzes
-  Absacken. Sackt die Spannung ab und die Säule blitzt beim Booten auf, fehlen dem
-  MOSFET-Modul die Pullups an den Steuereingängen – dann je 10 kΩ nach 3,3 V nachrüsten.
-- **Bei `brightness = 0` bzw. `on = false`** muss die Lampe vollständig dunkel sein. Im
-  Dunkeln gegenprüfen (siehe den Kommentar zu `PWM_MAX` in `config.h`).
-- **Weiß bei 10–20 %** ist der eigentliche Grund für die PWM-Regelung: die Lampe soll als
-  Präsenzanzeige dauerhaft leuchten können, ohne zu blenden.
-- Verhält sich das Modul invertiert zur Erwartung, genügt `LAMPE_LOW_AKTIV = false` in
-  `config.h`.
+- **Bleibt eine Lampe dunkel, die anderen gehen** – der Fehler sitzt hinter dem GPIO. Zum
+  Eingrenzen am MOSFET-Ausgang messen, während der Durchlauf auf diesem Kanal steht.
+- **Leuchtet die falsche Lampe** – die Zeilen in `LAMPEN[]` in `include/config.h` tauschen.
+- **Blitzt die Säule beim Booten kurz auf** – dem MOSFET-Modul fehlen die Pullups an den
+  Steuereingängen; je 10 kΩ nach 3,3 V nachrüsten. Die Firmware legt die GPIOs zwar als
+  allererstes auf den Aus-Pegel, kann aber die Zeit bis dahin nicht überbrücken.
+- **Schaltet alles genau verkehrt herum** – `LAMPE_LOW_AKTIV = false` in `config.h`.
 
 ## API
 
@@ -154,8 +155,8 @@ POST /api/reboot
 
 - Unbekannte Lampe → `404` mit der Liste der gültigen IDs.
 - Wert außerhalb des Bereichs → `400` mit Feld, empfangenem Wert und gültigem Bereich.
-  **Kein stilles Zurechtbiegen** – beim Verkabelungstest will man wissen, wenn etwas nicht
-  so ankommt, wie man es geschickt hat.
+  **Kein stilles Zurechtbiegen** – eine stillschweigend halbierte Helligkeit sucht man bei
+  der Fehlersuche sonst an der falschen Stelle.
 - Ungültiges JSON → `400` mit der Meldung des Parsers im Klartext.
 
 ## Bauen und flashen

@@ -105,7 +105,7 @@ a { color: var(--akzent); }
 <div id="lampen"></div>
 
 <footer>
-  <h2>Inbetriebnahme</h2>
+  <h2>Diagnose</h2>
   <div class="fusszeile">
     <button id="durchlauf">Kanal-Durchlauf</button>
     <button id="neustart">Neustart</button>
@@ -113,9 +113,10 @@ a { color: var(--akzent); }
   </div>
   <p class="hinweis">
     Der Kanal-Durchlauf schaltet die Kanaele 1 bis 5 nacheinander einzeln ein und
-    meldet dabei auf der seriellen Konsole, welche Farbe erwartet wird. Leuchtet
-    eine andere Lampe als angesagt, ist die Tabelle in <code>include/config.h</code>
-    zu tauschen.
+    meldet dabei auf der seriellen Konsole, welche Farbe erwartet wird - gut zum
+    Pruefen nach einem Lampenwechsel oder bei Verdacht auf einen Wackelkontakt.
+    Leuchtet eine andere Lampe als angesagt, ist die Tabelle in
+    <code>include/config.h</code> zu tauschen.
   </p>
 </footer>
 

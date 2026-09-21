@@ -42,8 +42,9 @@ struct Pruefergebnis {
 // sie stehen.
 //
 // Werte ausserhalb der Grenzen werden NICHT stillschweigend zurechtgebogen,
-// sondern als Fehler gemeldet: beim Verkabelungstest will man wissen, wenn
-// etwas nicht so ankommt, wie man es geschickt hat.
+// sondern als Fehler gemeldet. Eine stillschweigend halbierte Helligkeit
+// sucht man bei der Fehlersuche sonst an der falschen Stelle - im Zweifel
+// lieber eine deutliche Antwort als ein plausibles Ergebnis.
 Pruefergebnis uebernimmJson(Lampenzustand &zustand, JsonObjectConst quelle, bool vollstaendig);
 
 // Dasselbe aus Query-Parametern (?brightness=50&effect=blink&...), fuer die

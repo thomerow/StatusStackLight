@@ -1,7 +1,8 @@
-// config.h - alle Werte, die man beim Aufbau anfassen muss, an einer Stelle.
+// config.h - alle Werte, die von der Hardware abhaengen, an einer Stelle.
 //
-// Wenn beim Verkabelungstest etwas nicht stimmt (falsche Farbe, invertierte
-// Logik, fiepende Lampen), wird hier geaendert - nicht im uebrigen Quelltext.
+// Aendert sich etwas an der Saeule (andere Lampe, andere Farbreihenfolge,
+// getauschtes MOSFET-Modul), wird hier geschraubt - nicht im uebrigen
+// Quelltext.
 
 #pragma once
 
@@ -37,11 +38,10 @@ struct LampenKanal {
 
 // Reihenfolge = Kanalnummer 1...5 (wie in der Gehaeuse-README).
 //
-// Die Farbzuordnung stammt aus dem bisher produktiv laufenden Hook-Skript
-// ~/.claude/stacklight.ps1 und ist damit die einzige belastbare Quelle - sie
-// war aber nie gegen die Hardware geprueft. Genau dafuer gibt es den
-// Kanal-Durchlauf im Web-Interface: leuchtet dabei eine andere Lampe als
-// angesagt, werden hier die Zeilen getauscht.
+// Wird einmal umverdrahtet oder eine Lampe getauscht, ist der Kanal-Durchlauf
+// im Web-Interface der schnellste Weg zur Kontrolle: leuchtet dabei eine
+// andere Lampe als angesagt, werden hier die Zeilen getauscht und sonst
+// nichts.
 static const LampenKanal LAMPEN[LAMPEN_ANZAHL] = {
     {  4, "white",  "weiss",  "#f8fafc" },   // Kanal 1
     {  5, "blue",   "blau",   "#3b82f6" },   // Kanal 2
