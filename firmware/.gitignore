@@ -1,0 +1,11 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+.clangd
+compile_commands.json
+
+# Beim Build aus web/ erzeugt - gehoert nicht ins Repo, sonst pflegt man
+# denselben Inhalt zweimal und die Fassungen laufen auseinander.
+include/web_assets.h

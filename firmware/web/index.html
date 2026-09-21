@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StatusStackLight</title>
+<style>
+:root {
+  --bg:    #0f1115;
+  --karte: #191d24;
+  --rand:  #2a313c;
+  --text:  #e6e9ee;
+  --grau:  #8d97a6;
+  --akzent:#4f9cf9;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 16px;
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.huelle { max-width: 680px; margin: 0 auto; }
+
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin-bottom: 14px; }
+h1 { font-size: 19px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+.status { color: var(--grau); font-size: 13px; }
+.status b { color: var(--text); font-weight: 500; }
+.status.weg { color: #f87171; }
+
+.knopfzeile { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+button {
+  background: var(--karte); color: var(--text);
+  border: 1px solid var(--rand); border-radius: 8px;
+  padding: 9px 14px; font: inherit; font-size: 14px; cursor: pointer;
+}
+button:hover  { border-color: var(--akzent); }
+button:active { transform: translateY(1px); }
+button.laeuft { border-color: var(--akzent); color: var(--akzent); }
+
+.lampe {
+  background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
+  padding: 14px; margin-bottom: 10px;
+}
+.kopf { display: flex; align-items: center; gap: 12px; }
+.punkt {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+  border: 1px solid rgba(255,255,255,.18);
+  background: var(--farbe);
+  opacity: .12;
+}
+.punkt.an { opacity: 1; box-shadow: 0 0 14px 2px var(--farbe); }
+.punkt.blink { animation: blinken var(--takt) steps(1, end) infinite; }
+.punkt.pulse { animation: pulsen  var(--takt) ease-in-out infinite; }
+@keyframes blinken { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: .12; } }
+@keyframes pulsen  { 0%, 100% { opacity: .12; } 50% { opacity: 1; } }
+
+.name  { font-weight: 600; flex: 1; }
+.pin   { color: var(--grau); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.schalter { position: relative; width: 46px; height: 26px; flex: 0 0 auto; }
+.schalter input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.bahn {
+  position: absolute; inset: 0; border-radius: 13px;
+  background: #343b47; transition: background .15s; pointer-events: none;
+}
+.bahn::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #cfd6e0; transition: transform .15s;
+}
+.schalter input:checked + .bahn { background: var(--akzent); }
+.schalter input:checked + .bahn::after { transform: translateX(20px); }
+
+.regler { margin-top: 12px; display: grid; grid-template-columns: 78px 1fr 56px; gap: 8px; align-items: center; }
+.regler label { color: var(--grau); font-size: 13px; }
+.regler output { color: var(--grau); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--akzent); }
+select {
+  background: #11151b; color: var(--text); border: 1px solid var(--rand);
+  border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 14px; width: 100%;
+}
+.verborgen { display: none; }
+
+footer { margin-top: 22px; border-top: 1px solid var(--rand); padding-top: 16px; }
+footer h2 { font-size: 14px; color: var(--grau); margin: 0 0 10px; font-weight: 600; }
+.fusszeile { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fusszeile select { width: auto; }
+.hinweis { color: var(--grau); font-size: 13px; margin-top: 10px; }
+a { color: var(--akzent); }
+</style>
+</head>
+<body>
+<div class="huelle">
+
+<header>
+  <h1>StatusStackLight</h1>
+  <div class="status" id="status">verbinde ...</div>
+</header>
+
+<div class="knopfzeile">
+  <button id="allesAus">Alle aus</button>
+  <button id="allesAn">Alle an</button>
+</div>
+
+<div id="lampen"></div>
+
+<footer>
+  <h2>Inbetriebnahme</h2>
+  <div class="fusszeile">
+    <button id="durchlauf">Kanal-Durchlauf</button>
+    <button id="neustart">Neustart</button>
+    <a href="/setup">WLAN einrichten</a>
+  </div>
+  <p class="hinweis">
+    Der Kanal-Durchlauf schaltet die Kanaele 1 bis 5 nacheinander einzeln ein und
+    meldet dabei auf der seriellen Konsole, welche Farbe erwartet wird. Leuchtet
+    eine andere Lampe als angesagt, ist die Tabelle in <code>include/config.h</code>
+    zu tauschen.
+  </p>
+</footer>
+
+</div>
+<script>
+"use strict";
+
+const EFFEKTE = { steady: "dauerhaft", blink: "blinken", pulse: "pulsieren" };
+
+let lampen   = [];      // Reihenfolge wie angezeigt
+let aufgebaut = false;
+let sperren  = {};      // id+feld -> Zeitpunkt, bis zu dem der Server nicht reinredet
+const wartend = {};     // id -> ausstehende Aenderungen (Entprellung)
+const zeitgeber = {};
+
+function hol(pfad, optionen) {
+  return fetch(pfad, optionen).then(a => a.json().then(j => {
+    if (!a.ok) throw new Error(j.error || a.status);
+    return j;
+  }));
+}
+
+// Schiebereglern beim Ziehen nicht ins Handwerk pfuschen: nach einer
+// Bedienung bleibt das jeweilige Feld kurz gegen Serverwerte gesperrt, sonst
+// springt der Regler beim naechsten Abgleich zurueck.
+function sperre(id, feld) { sperren[id + "." + feld] = Date.now() + 1500; }
+function gesperrt(id, feld) { return (sperren[id + "." + feld] || 0) > Date.now(); }
+
+// Entprellung: ein gezogener Regler loest sonst hundert Anfragen aus.
+function aendere(id, feld, wert) {
+  sperre(id, feld);
+  wartend[id] = Object.assign(wartend[id] || {}, { [feld]: wert });
+  clearTimeout(zeitgeber[id]);
+  zeitgeber[id] = setTimeout(() => {
+    const daten = wartend[id];
+    delete wartend[id];
+    hol("/api/lamps/" + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(daten)
+    }).then(zeichneLampe).catch(zeigeFehler);
+  }, 100);
+}
+
+function zeigeFehler(e) {
+  const s = document.getElementById("status");
+  s.textContent = "Fehler: " + e.message;
+  s.classList.add("weg");
+}
+
+function baueKarte(l) {
+  const karte = document.createElement("div");
+  karte.className = "lampe";
+  karte.id = "lampe-" + l.id;
+  karte.innerHTML = `
+    <div class="kopf">
+      <div class="punkt" style="--farbe:${l.color}"></div>
+      <div class="name">${l.name}</div>
+      <div class="pin">K${l.channel} &middot; GPIO ${l.gpio}</div>
+      <label class="schalter"><input type="checkbox" data-feld="on"><span class="bahn"></span></label>
+    </div>
+    <div class="regler">
+      <label>Helligkeit</label>
+      <input type="range" min="0" max="100" step="1" data-feld="brightness">
+      <output data-aus="brightness"></output>
+    </div>
+    <div class="regler">
+      <label>Modus</label>
+      <select data-feld="effect">
+        ${Object.entries(EFFEKTE).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}
+      </select>
+      <output></output>
+    </div>
+    <div class="regler" data-nur="takt">
+      <label>Blinktakt</label>
+      <input type="range" min="0.1" max="20" step="0.1" data-feld="frequency">
+      <output data-aus="frequency"></output>
+    </div>
+    <div class="regler" data-nur="blink">
+      <label>Tastgrad</label>
+      <input type="range" min="1" max="99" step="1" data-feld="duty">
+      <output data-aus="duty"></output>
+    </div>`;
+
+  karte.querySelectorAll("[data-feld]").forEach(el => {
+    const feld = el.dataset.feld;
+    const lesen = () => el.type === "checkbox" ? el.checked
+                      : el.tagName === "SELECT" ? el.value
+                      : feld === "frequency"    ? parseFloat(el.value)
+                      :                           parseInt(el.value, 10);
+    el.addEventListener("input",  () => { sperre(l.id, feld); zeigeWerte(karte); });
+    el.addEventListener("change", () => aendere(l.id, feld, lesen()));
+  });
+
+  return karte;
+}
+
+function zeigeWerte(karte) {
+  const q = f => karte.querySelector('[data-feld="' + f + '"]');
+  karte.querySelector('[data-aus="brightness"]').textContent = q("brightness").value + " %";
+  karte.querySelector('[data-aus="frequency"]').textContent  = (+q("frequency").value).toFixed(1) + " Hz";
+  karte.querySelector('[data-aus="duty"]').textContent       = q("duty").value + " %";
+
+  const effekt = q("effect").value;
+  karte.querySelector('[data-nur="takt"]').classList.toggle("verborgen", effekt === "steady");
+  karte.querySelector('[data-nur="blink"]').classList.toggle("verborgen", effekt !== "blink");
+}
+
+function zeichneLampe(l) {
+  const karte = document.getElementById("lampe-" + l.id);
+  if (!karte) return;
+
+  const setze = (feld, wert) => {
+    if (gesperrt(l.id, feld)) return;
+    const el = karte.querySelector('[data-feld="' + feld + '"]');
+    if (el.type === "checkbox") el.checked = wert; else el.value = wert;
+  };
+  setze("on", l.on);
+  setze("brightness", l.brightness);
+  setze("effect", l.effect);
+  setze("frequency", l.frequency);
+  setze("duty", l.duty);
+
+  const punkt = karte.querySelector(".punkt");
+  punkt.className = "punkt" + (l.on ? " an " + l.effect : "");
+  punkt.style.setProperty("--takt", (1 / l.frequency).toFixed(3) + "s");
+  // Helligkeit im Browser nur andeuten - die Lampe selbst ist gammakorrigiert,
+  // hier geht es blosss darum, dass man 10 % von 100 % unterscheiden kann.
+  punkt.style.filter = l.on ? "brightness(" + (0.35 + 0.65 * l.brightness / 100).toFixed(2) + ")" : "";
+
+  zeigeWerte(karte);
+}
+
+function zeichneStatus(s) {
+  const el = document.getElementById("status");
+  el.classList.remove("weg");
+  const dauer = s.uptime;
+  const zeit = dauer < 3600 ? Math.floor(dauer / 60) + " min"
+             : dauer < 86400 ? Math.floor(dauer / 3600) + " h"
+             : Math.floor(dauer / 86400) + " d";
+  el.innerHTML = s.wifi.mode === "ap"
+    ? `<b>Konfig-AP</b> ${s.wifi.ssid} &middot; ${s.wifi.ip} &middot; ${zeit}`
+    : `<b>${s.wifi.ssid}</b> &middot; ${s.wifi.ip} &middot; ${s.wifi.rssi} dBm &middot; ${zeit}`;
+
+  document.getElementById("durchlauf").classList.toggle("laeuft", s.sweep.running);
+}
+
+function abgleich() {
+  hol("/api/status").then(s => {
+    if (!aufgebaut) {
+      // Reihenfolge kommt vom Geraet (Saeule von oben nach unten), damit die
+      // Seite die Zuordnung nicht doppelt kennen muss.
+      lampen = s.order.map(id => s.lamps.find(l => l.id === id));
+      const ziel = document.getElementById("lampen");
+      lampen.forEach(l => ziel.appendChild(baueKarte(l)));
+      aufgebaut = true;
+    }
+    zeichneStatus(s);
+    s.lamps.forEach(zeichneLampe);
+  }).catch(zeigeFehler);
+}
+
+function alle(daten) {
+  Object.keys(sperren).forEach(k => delete sperren[k]);
+  hol("/api/lamps/all", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(daten)
+  }).then(a => a.lamps.forEach(zeichneLampe)).catch(zeigeFehler);
+}
+
+document.getElementById("allesAus").onclick = () => alle({ on: false });
+document.getElementById("allesAn").onclick  = () => alle({ on: true });
+
+document.getElementById("durchlauf").onclick = () =>
+  hol("/api/sweep", { method: "POST" }).catch(zeigeFehler);
+
+document.getElementById("neustart").onclick = () => {
+  if (confirm("Geraet neu starten?")) {
+    hol("/api/reboot", { method: "POST" }).catch(() => {});
+  }
+};
+
+abgleich();
+setInterval(abgleich, 2000);
+</script>
+</body>
+</html>
