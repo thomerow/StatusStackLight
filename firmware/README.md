@@ -285,20 +285,51 @@ Web-Interface oder curl.
 
 | Lampe | Zustand | Darstellung |
 |---|---|---|
-| weiß | bereit – Session offen, nichts los | dauerhaft, 12 % |
-| grün | fertig – gerade fertig geworden | dauerhaft, 45 % |
+| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,1 Hz, 12 % |
+| grün | fertig – gerade fertig geworden | dauerhaft, 45 %, fünf Minuten lang |
 | blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
-| orange | wartet auf dich | blinkend, 1,2 Hz, 100 % |
+| orange | Rückfrage an dich | dauerhaft, 40 % |
+| orange | wartet auf eine Freigabe | blinkend, 1,2 Hz, 50 % |
 | rot | Fehler | dauerhaft, 100 %, rastet bis zum nächsten Prompt |
+| rot | gefährlicher Befehl (`rm -rf`, `git push --force`, …) | kurzer Blitz, 6 Hz, über dem übrigen Zustand |
 
-Genau eine von bereit/fertig/arbeitet/wartet brennt (Rangfolge von rechts nach links), rot
-liegt unabhängig darüber. Grün fällt nach fünf Minuten auf weiß zurück – „frisch fertig" ist
-eine andere Information als „steht schon eine Weile da".
+Genau eine von bereit/fertig/arbeitet/Rückfrage/Freigabe brennt (Rangfolge von rechts nach
+links), rot liegt unabhängig darüber.
 
-Weiß läuft mit 12 %, die übrigen deutlich höher: Die weiße Lampe ist mit Abstand die
-hellste und braucht viel weniger Prozent, um gleich hell zu wirken. Genau das war bisher
-nicht möglich und der eigentliche Anlass für die PWM-Regelung – ungedimmt ist Weiß als
-Dauerlicht nicht zu ertragen.
+**Orange nur, wenn Claude dich braucht.** Der Notification-Hook hat Matcher auf den
+Benachrichtigungstyp: `permission_prompt` ist eine Freigabe (blinkt),
+`elicitation_dialog`, `elicitation_url_dialog` und `agent_needs_input` sind Rückfragen
+(ruhig). Die Leerlauf-Meldung nach einer Minute ohne Eingabe (`idle_prompt`) ist bewusst
+nicht dabei – sie machte vorher aus jedem Grün nach 60 s ein Orange. Zusätzlich lösen die
+Werkzeuge `ExitPlanMode` (Freigabe) und `AskUserQuestion` (Rückfrage) über `PreToolUse`
+direkt aus. Getrennt wird über eigene Hook-Einträge mit den Events `Freigabe` und
+`Rueckfrage`, nicht über Felder der Hook-Eingabe: deren Aufbau ist für Notification nicht
+dokumentiert.
+
+**Orange geht wieder aus**, sobald das freigegebene Werkzeug gelaufen bzw. die Frage
+beantwortet ist: `PostToolUse` ruft das Skript mit `ToolDone` auf, und es springt zurück
+auf blau. Ohne das bliebe Orange bis zum Ende der Antwort stehen, denn eine Freigabe ist
+kein neuer Prompt. Grenze: Einen Zeitpunkt „Freigabe erteilt" meldet Claude Code nicht –
+bei einem langen Build blinkt es also, bis der freigegebene Befehl fertig ist.
+`PostToolUse` feuert nach jedem Werkzeugaufruf; wartet die Session nicht, beendet sich das
+Skript sofort ohne Anfrage an die Säule.
+
+**Grün fällt nach fünf Minuten auf weiß** – „frisch fertig" ist eine andere Information
+als „steht schon eine Weile da". Weil danach womöglich lange kein Hook mehr feuert, startet
+`Stop` einen versteckten Nachzügler, der die Zeit absitzt und einmal neu rechnet. Es läuft
+immer nur einer; ein neuer `Stop` beendet den vorigen.
+
+**Helligkeiten:** Weiß ist mit Abstand die hellste Lampe und braucht viel weniger Prozent,
+um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen, genau das war
+der Anlass für die PWM-Regelung. Orange war mit 100 % aus der Nähe grell; die
+Aufmerksamkeit soll vom Blinken kommen, nicht von der Helligkeit. Alle Werte stehen in der
+Tabelle `$Anzeige` oben im Skript.
+
+**Warnblitz nur bei echten Treffern.** Die `if`-Bedingungen im `PreToolUse`-Hook
+(`Bash(rm -rf *)` usw.) sind nur ein grober Vorfilter: Befehle, die Claude Code nicht sauber
+zerlegen kann – Schleifen, `$(…)`, Heredocs –, lässt es sicherheitshalber durch. Gemessen
+blitzte schon `for i in 1; do echo "$(echo harmlos)"; done`. Das Skript prüft deshalb den
+tatsächlichen Befehlstext noch einmal selbst.
 
 Zum Ausprobieren ohne Hooks:
 
