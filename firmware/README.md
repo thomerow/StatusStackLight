@@ -300,7 +300,7 @@ links), rot liegt unabhängig darüber.
 Benachrichtigungstyp: `permission_prompt` ist eine Freigabe (blinkt),
 `elicitation_dialog`, `elicitation_url_dialog` und `agent_needs_input` sind Rückfragen
 (ruhig). Die Leerlauf-Meldung nach einer Minute ohne Eingabe (`idle_prompt`) ist bewusst
-nicht dabei – sie machte vorher aus jedem Grün nach 60 s ein Orange. Zusätzlich lösen die
+nicht dabei – sie würde jedes Grün nach 60 s zu Orange machen. Zusätzlich lösen die
 Werkzeuge `ExitPlanMode` (Freigabe) und `AskUserQuestion` (Rückfrage) über `PreToolUse`
 direkt aus. Getrennt wird über eigene Hook-Einträge mit den Events `Freigabe` und
 `Rueckfrage`, nicht über Felder der Hook-Eingabe: deren Aufbau ist für Notification nicht
@@ -320,16 +320,16 @@ als „steht schon eine Weile da". Weil danach womöglich lange kein Hook mehr f
 immer nur einer; ein neuer `Stop` beendet den vorigen.
 
 **Helligkeiten:** Weiß ist mit Abstand die hellste Lampe und braucht viel weniger Prozent,
-um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen, genau das war
-der Anlass für die PWM-Regelung. Orange war mit 100 % aus der Nähe grell; die
-Aufmerksamkeit soll vom Blinken kommen, nicht von der Helligkeit. Alle Werte stehen in der
-Tabelle `$Anzeige` oben im Skript.
+um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen. Orange ist mit
+voller Helligkeit aus der Nähe grell und läuft deshalb gedimmt; die Aufmerksamkeit kommt vom
+Blinken, nicht von der Helligkeit. Alle Werte stehen in der Tabelle `$Anzeige` oben im
+Skript.
 
 **Warnblitz nur bei echten Treffern.** Die `if`-Bedingungen im `PreToolUse`-Hook
 (`Bash(rm -rf *)` usw.) sind nur ein grober Vorfilter: Befehle, die Claude Code nicht sauber
-zerlegen kann – Schleifen, `$(…)`, Heredocs –, lässt es sicherheitshalber durch. Gemessen
-blitzte schon `for i in 1; do echo "$(echo harmlos)"; done`. Das Skript prüft deshalb den
-tatsächlichen Befehlstext noch einmal selbst.
+zerlegen kann – Schleifen, `$(…)`, Heredocs –, lässt es sicherheitshalber durch; schon
+`for i in 1; do echo "$(echo harmlos)"; done` passiert den Vorfilter. Das Skript prüft
+deshalb den tatsächlichen Befehlstext noch einmal selbst.
 
 Zum Ausprobieren ohne Hooks:
 
