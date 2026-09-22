@@ -101,17 +101,18 @@ each other off, and a crashed session is forgotten after an hour without events.
 | `PreToolUse` | `AskUserQuestion` | `Question` |
 | `PreToolUse` | `Bash`, with `if` on dangerous commands | `Danger` |
 | `PostToolUse` | `*` | `ToolDone` |
-| `PostToolUseFailure` | `*` | `ToolFailure` |
 | `Stop` / `StopFailure` | – | `Stop` / `StopFailure` |
 | `SessionEnd` | – | `SessionEnd` |
 
-**Red on a failed tool call** (`PostToolUseFailure`) is worth trying out before you rely on
-it: tool calls fail often in normal work – a search without a match, a test run that is
-supposed to fail – and red then stays until the next prompt. If it lights up so often that
-you stop looking, remove that hook entry; `StopFailure` still reports real errors.
-
 The script still accepts `Freigabe` and `Rueckfrage`, the former German names of `Approval`
 and `Question`, so older hook configurations keep working.
+
+**Red only when it matters.** `PostToolUseFailure` is deliberately not wired up, although the
+script understands it as `-Event ToolFailure`. Failed tool calls are part of normal work – a
+search without a match, a test that is meant to fail – and Claude usually handles them by
+itself. Red for each of them would come so often that you stop looking, and then it is
+overlooked in the one case that counts. Red stays reserved for a response that ended in an
+error (`StopFailure`) and for the warning flash.
 
 **Orange only when Claude needs you.** The Notification hook has matchers on the
 notification type: `permission_prompt` is an approval (blinking), `elicitation_dialog`,

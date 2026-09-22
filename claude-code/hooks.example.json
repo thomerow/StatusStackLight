@@ -269,25 +269,6 @@
           }
         ]
       }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
-            "args": [
-              "-NoProfile",
-              "-File",
-              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
-              "-Event",
-              "ToolFailure"
-            ],
-            "async": true
-          }
-        ]
-      }
     ]
   }
 }
