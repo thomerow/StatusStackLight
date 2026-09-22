@@ -31,7 +31,7 @@ fünf eine gemeinsame Zeitbasis.
 | Board | ESP32-S3 DevKitC-1, **N16R8** (16 MB Flash, 8 MB Octal-PSRAM) |
 | Treiber | 8-Kanal-MOSFET-Modul, low-side, **LOW-aktiv** (GPIO auf Masse = Lampe an) |
 | Leuchtmittel | 12-V-LED-Module |
-| Versorgung | USB-C-PD-Triggerboard (12 V) → Mini560-Buck → 5 V an den ESP32 |
+| Versorgung | USB-C-PD-Triggerboard (12 V) → Mini560-Buck → 3,3 V an den 3V3-Pin des ESP32 |
 
 ### Kanalbelegung
 
@@ -182,6 +182,13 @@ pio run -e usb -t upload
 ```
 
 Der erste Build lädt Plattform und Xtensa-Toolchain nach – das dauert und braucht Internet.
+
+**Versorgung beim Flashen:** Der Mini560 speist 3,3 V direkt in den 3V3-Pin, am
+Spannungsregler des Boards vorbei. Steckt zusätzlich USB, arbeiten zwei Quellen auf dieselbe
+Leitung – Espressif nennt die beiden Versorgungswege ausdrücklich „mutually exclusive“. Für
+einen kurzen Flashvorgang geht das in der Praxis meist gut; sauber ist, die 3,3-V-Leitung
+vorher zu trennen (Masse darf bleiben). Das Board ist ein Nachbau mit CH343 statt CP2102N,
+Schutzdioden an den USB-Buchsen sind also nicht gesichert.
 
 ### Zwei Dinge, die hier absichtlich so stehen
 
