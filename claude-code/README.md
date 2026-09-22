@@ -13,7 +13,7 @@ Code und steuert die Säule über die [HTTP-API der Firmware](../firmware/API.md
 | grün | fertig – gerade fertig geworden | dauerhaft, 45 %, fünf Minuten lang |
 | blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
 | orange | Rückfrage an dich | dauerhaft, 40 % |
-| orange | wartet auf eine Freigabe | blinkend, 1,2 Hz, 50 % |
+| orange | wartet auf eine Freigabe | blinkend, 1,2 Hz, 40 % |
 | rot | Fehler | dauerhaft, 100 %, rastet bis zum nächsten Prompt |
 | rot | gefährlicher Befehl (`rm -rf`, `git push --force`, …) | kurzer Blitz, 6 Hz, über dem übrigen Zustand |
 

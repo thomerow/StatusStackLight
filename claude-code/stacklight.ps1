@@ -132,7 +132,7 @@ $Anzeige = [ordered]@{
     # die Arbeit still. Hartes Blinken statt Pulsieren: das hier SOLL dich
     # ansprechen. Die Aufmerksamkeit kommt vom Blinken, nicht von der
     # Helligkeit - mit 100 % ist Orange aus der Naehe unangenehm grell.
-    wartet   = @{ lampe = 'orange'; effect = 'blink';  brightness = 50; frequency = 1.2; duty = 55 }
+    wartet   = @{ lampe = 'orange'; effect = 'blink';  brightness = 40; frequency = 1.2; duty = 55 }
 
     # Fehler. Liegt unabhaengig ueber allem anderen und rastet bis zum
     # naechsten Prompt.
