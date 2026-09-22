@@ -78,7 +78,7 @@ wird – der schnellste Weg, nach einem Lampenwechsel oder bei Verdacht auf eine
 Wackelkontakt jeden Kanal einzeln zu sehen:
 
 ```
-[durchlauf] Kanal 1  GPIO  4  erwartet: weiss
+[durchlauf] Kanal 1  GPIO  4  erwartet: weiß
 [durchlauf] Kanal 2  GPIO  5  erwartet: blau
 ...
 ```
