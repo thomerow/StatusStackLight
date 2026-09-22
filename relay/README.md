@@ -5,10 +5,10 @@ computer and stack light no longer need to be on the same network:
 
 ```
  Claude Code ──hook──▶ stacklight.ps1 ──POST /api/v1/events──▶ ┌────────┐
- (any number of                                                 │ relay  │ ◀── admin interface
-  computers)                                                    └────────┘     (browser)
-                                                                    ▲
- stack light ──────────── GET /api/v1/lamps (long poll) ────────────┘
+ (any number of                                                │ relay  │ ◀── admin interface
+  computers)                                                   └────────┘     (browser)
+                                                                   ▲
+ stack light ──────────── GET /api/v1/lamps (long poll) ───────────┘
 ```
 
 - The **hook script** reports every event (`SessionStart`, `Approval`, `Stop`, …) with its
