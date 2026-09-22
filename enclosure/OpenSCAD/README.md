@@ -1,197 +1,195 @@
-# StatusStackLight – Gehäuse (OpenSCAD)
+# StatusStackLight – Enclosure (OpenSCAD)
 
-Parametrisches, 3D-druckbares Gehäuse, das eine industrielle Signalsäule trägt und die
-Elektronik aufnimmt: ESP32-S3 DevKitC-1 (N16R8), 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
-(12 V → 3,3 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
+Parametric, 3D-printable enclosure that carries an industrial stack light and houses the
+electronics: ESP32-S3 DevKitC-1 (N16R8), 8-channel MOSFET module, Mini560 buck converter
+(12 V → 3.3 V) and a USB-C PD trigger board that requests 12 V from the power supply.
 
-**Die Säule hat 5 Lampen.** Genutzt werden also nur 5 der 8 MOSFET-Kanäle; die restlichen
-drei bleiben absichtlich frei. Das 8-Kanal-Modul steckt trotzdem drin, weil es vorhanden
-war – es ist mit 68 × 72 × 16 mm das größte Bauteil und bestimmt damit sowohl die
-Innenmaße als auch die Innenhöhe des Gehäuses. Wer die Kiste kleiner haben will, setzt
-dort an, nicht beim Mikrocontroller.
+**The stack light has 5 lamps.** So only 5 of the 8 MOSFET channels are used; the other
+three are deliberately left free. The 8-channel module is in there anyway because it was on
+hand – at 68 × 72 × 16 mm it is the largest component and thus determines both the inner
+dimensions and the inner height of the enclosure. If you want a smaller box, start there,
+not with the microcontroller.
 
-**Stufe 1: zweiteilig** – Hauptkörper mit integriertem Deckel + abnehmbare Bodenplatte.
+**Stage 1: two parts** – main body with integrated lid + removable base plate.
 
-| Datei | Inhalt |
+| File | Contents |
 |---|---|
-| `statusstacklight_gehaeuse.scad` | komplettes Modell, alle Maße als Variablen am Dateianfang |
-| `render.ps1` | erzeugt STLs und Vorschaubilder über die Kommandozeile |
-| `body.stl` / `boden.stl` | exportierte Druckteile (aus den aktuellen Parametern) |
-| `preview/` | Rendering-Vorschauen |
+| `statusstacklight_enclosure.scad` | complete model, all dimensions as variables at the top of the file |
+| `render.ps1` | generates STLs and preview images from the command line |
+| `body.stl` / `base.stl` | exported printable parts (from the current parameters) |
+| `preview/` | rendered previews |
 
-Aktuelle Außenmaße: **138,8 × 120,8 × 35,8 mm** (Innenraum 134 × 116 × 31 mm).
+Current outer dimensions: **138.8 × 120.8 × 35.8 mm** (interior 134 × 116 × 31 mm).
 
-## Konstruktionsprinzip
+## Design principles
 
-* **Koordinaten:** `x = 0…innen_x` (links→rechts), `y = 0…innen_y` (vorn→hinten),
-  `z = 0` ist die Trennebene = Oberseite der Bodenplatte. Alle Layout-Positionen sind in
-  diesen Innenkoordinaten angegeben.
-* **Die Bodenplatte trägt die gesamte Elektronik.** Sie wird außerhalb des Gehäuses
-  bestückt und anschließend von unten senkrecht eingeschoben.
-* **Plane Oberseite.** Der Deckel ist außen völlig glatt – nur die vier M4-Löcher und die
-  Kabeldurchführung. Ein erhabener Zentrierring um den Säulenfuß ist zwar als
-  `saeule_zentrierring` weiterhin im Modell, aber **abgeschaltet**: der Hauptkörper wird auf
-  dem Deckel stehend gedruckt, der Ring wäre dann das Einzige, was auf dem Druckbett
-  aufliegt, und die gesamte restliche Deckelfläche hinge 1,2 mm in der Luft. Zentriert wird
-  der Flansch ohnehin durch die vier M4-Schrauben auf dem 55er Lochkreis.
-* **Keine Schrauben für die Platinen.** Jede Platine sitzt auf vier Auflagepads; an einer
-  Kante liegen zwei starre Auflageleisten, an der gegenüberliegenden zwei federnde
-  Schnappclipse mit 45°-Einführfase. Platine schräg unter die starre Seite schieben,
-  gegenüber herunterdrücken – rastet ein.
-* **Verschluss:** 4 Eckdome mit Heat-Set-Inserts M3 (Ø 4,0 × 6 mm), Senkkopfschrauben M3
-  von unten. Die Senkungen sind **kegelig** ausgeführt (90° nach DIN 7991), der Kopf liegt
-  also flächig auf der Kegelflanke auf statt auf einer Kante. Die Tiefe wird aus
-  `senkung_winkel` und `senkung_d` berechnet und nicht separat vorgegeben – sonst passt der
-  Kegel nicht mehr zum Schraubenkopf. Ein kurzer zylindrischer Anlauf (`senkung_anlauf`,
-  0,3 mm) an der Außenfläche fängt den Elefantenfuß der ersten Druckschicht ab; der Kopf
-  sitzt damit rund 0,4 mm unter der Oberfläche. Bei 2,4 mm Bodenstärke bleiben 0,7 mm
-  Material unter der Senkung stehen – das Modell rechnet es aus und warnt, wenn es zu
-  dünn wird.
+* **Coordinates:** `x = 0…inner_x` (left→right), `y = 0…inner_y` (front→back), `z = 0` is
+  the parting plane = top of the base plate. All layout positions are given in these inner
+  coordinates.
+* **The base plate carries all the electronics.** It is populated outside the enclosure and
+  then slid in vertically from below.
+* **Flat top.** The lid is completely smooth on the outside – only the four M4 holes and the
+  cable feed-through. A raised centering ring around the stack light base is still in the
+  model as `light_centering_ring`, but **disabled**: the main body is printed standing on the
+  lid, so the ring would be the only thing resting on the print bed, and the whole remaining
+  lid surface would hang 1.2 mm in the air. The flange is centred by the four M4 screws on
+  the 55 mm bolt circle anyway.
+* **No screws for the boards.** Each board sits on four support pads; along one edge there
+  are two rigid support ledges, along the opposite edge two springy snap clips with a 45°
+  lead-in chamfer. Slide the board at an angle under the rigid side, press down on the
+  opposite side – it snaps in.
+* **Closure:** 4 corner bosses with M3 heat-set inserts (Ø 4.0 × 6 mm), M3 countersunk
+  screws from below. The countersinks are **conical** (90° per DIN 7991), so the head rests
+  flat on the cone flank instead of on an edge. The depth is computed from
+  `countersink_angle` and `countersink_d` and not set separately – otherwise the cone no
+  longer matches the screw head. A short cylindrical lead-in (`countersink_lead`, 0.3 mm) at
+  the outer surface absorbs the elephant's foot of the first layer; the head thus sits about
+  0.4 mm below the surface. With a 2.4 mm floor, 0.7 mm of material remains below the
+  countersink – the model computes this and warns if it gets too thin.
 
-### USB-C-PD-Triggerboard – Zugentlastung
+### USB-C PD trigger board – strain relief
 
-Die Buchse sitzt mittig an einer 20-mm-Kante und tritt mittig durch die Frontwand:
+The port sits in the middle of a 20 mm edge and passes through the middle of the front
+wall:
 
-* Der Wanddurchbruch (13,5 × 7,5 mm) ist **nach unten bis zur Trennebene offen**, damit die
-  bestückte Bodenplatte kollisionsfrei einfährt – und er druckt dadurch ohne Brücke.
-* Ein **Steckerkragen** auf der Bodenplatte füllt den Schlitz unterhalb der Öffnung wieder
-  auf und bildet die Unterkante der sichtbaren Öffnung.
-* Die Buchse **steht 1 mm über die Platinenkante** vor und taucht damit selbst in den
-  Wanddurchbruch ein.
-* Eine **Außenansenkung** (17 mm breit, 1,2 mm tief) dünnt die Wand vor der Buchse aus.
-  Zusammen mit dem Überstand bleiben nur noch **0,2 mm Restwand** vor der Steckermündung –
-  der Stecker rastet praktisch bündig ein und die volle Steckerlänge greift. Das Modell
-  prüft das beim Kompilieren (`usbc_luft`); die Ansenkung darf `wand − usbc_ueberstand`
-  nicht überschreiten.
-* **Kraftfluss:** Der **Sattel** unter der Platinenvorderkante nimmt Kräfte nach unten auf,
-  die Clipse halten nach oben, die **Anschlagrippe** hinter der Platine nimmt die
-  Einsteckkraft, und die Frontwand selbst (links und rechts der Öffnung liegt die
-  Platinenkante an) hält beim Herausziehen dagegen. Die Lötstellen der Buchse werden
-  in keiner Richtung belastet.
-* **Die Anschlagrippe ist zweigeteilt** (`usbc_rippe_luecke`, 10 mm): die Lötaugen des
-  PD-Boards sitzen hinten mittig, die Kabel brauchen dort einen Ausgang nach hinten.
-  Übrig bleiben zwei Segmente von je 7 mm an den hinteren Platinenecken. Für den
-  Kraftfluss ist das kein Verlust, eher das Gegenteil – die Einsteckkraft geht jetzt in
-  die Ecken statt in die Mitte, die Platine wird also nicht mehr auf Biegung belastet.
-  `usbc_rippe_luecke = 0` stellt die durchgehende Rippe wieder her.
+* The wall opening (13.5 × 7.5 mm) is **open downwards to the parting plane**, so the
+  populated base plate slides in without collisions – and it prints without a bridge.
+* A **connector collar** on the base plate fills the slot below the opening again and forms
+  the lower edge of the visible opening.
+* The port **protrudes 1 mm beyond the board edge** and thus dips into the wall opening
+  itself.
+* An **outer recess** (17 mm wide, 1.2 mm deep) thins the wall in front of the port.
+  Together with the protrusion, only **0.2 mm of wall** remains in front of the port mouth –
+  the plug seats practically flush and its full length engages. The model checks this at
+  compile time (`usbc_gap`); the recess must not exceed `wall − usbc_protrusion`.
+* **Force flow:** The **saddle** below the board's front edge takes downward forces, the
+  clips hold upwards, the **stop rib** behind the board takes the plug-in force, and the
+  front wall itself (the board edge rests against it left and right of the opening) holds
+  against pulling out. The port's solder joints are not loaded in any direction.
+* **The stop rib is split in two** (`usbc_rib_gap`, 10 mm): the PD board's solder eyes sit
+  at the back centre, and the wires need a way out backwards there. What remains are two
+  segments of 7 mm each at the back board corners. For the force flow that is no loss,
+  rather the opposite – the plug-in force now goes into the corners instead of the middle,
+  so the board is no longer loaded in bending. `usbc_rib_gap = 0` restores the continuous
+  rib.
 
-Rundum bleibt Spiel: die Buchse wird geführt, nicht geklemmt.
+There is clearance all around: the port is guided, not clamped.
 
-## Nutzung
+## Usage
 
-Alles, was das Repo enthält, entsteht mit einem Aufruf – **ohne die OpenSCAD-GUI**:
+Everything the repo contains is produced with one call – **without the OpenSCAD GUI**:
 
 ```powershell
-.\render.ps1                 # body.stl, boden.stl und alle preview/*.png
-.\render.ps1 -Only Stl       # nur die Druckteile
-.\render.ps1 -Only Preview   # nur die Bilder (< 1 s pro Bild)
+.\render.ps1                 # body.stl, base.stl and all preview/*.png
+.\render.ps1 -Only Stl       # only the printable parts
+.\render.ps1 -Only Preview   # only the images (< 1 s per image)
 ```
 
-Das Skript sucht `openscad.exe` selbst (sonst `-OpenScad <pfad>`) und gibt am Ende die
-abgeleiteten Maße und die Kollisionsprüfungen des Modells aus:
+The script finds `openscad.exe` by itself (otherwise `-OpenScad <path>`) and finally prints
+the model's derived dimensions and collision checks:
 
 ```
-Innenmasse  : 134 x 116 x 31 mm
-Aussenmasse : 138.8 x 120.8 x 35.8 mm (Deckel plan)
-USB-C-Buchse: Stirn y=-1  Ansenkungsboden y=-1.2  Restwand=0.2 mm  -> OK
-Senkung     : 90 Grad, Tiefe 1.7 mm  Restboden=0.7 mm  -> OK
-Saeulendome : Unterkante z=21  hoechste Baugruppe z=19  -> OK
+Inner size  : 134 x 116 x 31 mm
+Outer size  : 138.8 x 120.8 x 35.8 mm (flat lid)
+USB-C port  : face y=-1  recess floor y=-1.2  remaining wall=0.2 mm  -> OK
+Countersink : 90 degrees, depth 1.7 mm  remaining floor=0.7 mm  -> OK
+Light bosses: bottom z=21  tallest assembly z=19  -> OK
 ```
 
-Zum Konstruieren die Datei wie gewohnt in der OpenSCAD-GUI öffnen; `teil` schaltet
-zwischen `"beides"`, `"body"`, `"boden"` und `"explosion"` um.
+For design work, open the file in the OpenSCAD GUI as usual; `part` switches between
+`"both"`, `"body"`, `"base"` and `"explosion"`.
 
-> Stolperfalle für eigene Skripte: `openscad.exe` ist ein GUI-Subsystem-Binary und kehrt
-> **sofort** zurück, wenn PowerShell seine Ausgabe nicht über eine echte Pipeline
-> konsumiert – eine Zuweisung wie `$log = & $OS @args 2>&1` wartet **nicht** auf das Ende
-> des Renderns. `render.ps1` liest deshalb über `| ForEach-Object { "$_" }` und prüft
-> zusätzlich den Zeitstempel der geschriebenen Datei.
+> Pitfall for your own scripts: `openscad.exe` is a GUI subsystem binary and returns
+> **immediately** unless PowerShell consumes its output through a real pipeline – an
+> assignment like `$log = & $OS @args 2>&1` does **not** wait for rendering to finish.
+> `render.ps1` therefore reads through `| ForEach-Object { "$_" }` and additionally checks
+> the timestamp of the written file.
 
-`zeige_platinen = true` blendet die Platinen als transparente Geister ein (`%`) – sie sind
-im Rendering/STL **nicht** enthalten.
+`show_boards = true` shows the boards as transparent ghosts (`%`) – they are **not**
+included in the render/STL.
 
-## Maße
+## Dimensions
 
-### Gemessen und bestätigt
+### Measured and confirmed
 
-| Variable | Wert | |
+| Variable | Value | |
 |---|---|---|
-| `mosfet_h` | 16 | Bauhöhe des MOSFET-Moduls inkl. Schraubklemmen |
-| `saeule_fuss_d` | 70 | Außendurchmesser des Säulenfußes; bestimmt die Deckelverstärkung (Fuß + 10 mm) auf der Innenseite |
-| `saeule_lochkreis_d` | 55 | |
-| `saeule_schrauben_n` | 4 | |
-| `pd_b` × `pd_l` | 20 × 31,5 | USB-C-PD-Triggerboard |
-| `usbc_ueberstand` | 1,0 | Überstand der Buchse über die Platinenkante |
-| `buck_l` × `buck_b` × `buck_h` | 30 × 18 × 6 | Mini560 – löst den LM2596 ab, 13 mm kürzer und 8 mm flacher |
-| `mcu_l` × `mcu_b` × `mcu_h` | 57,3 × 28,1 × 5,0 | ESP32-S3 DevKitC-1 N16R8; Höhe = 1,6 Platine + 3,4 Aufbau |
-| `mcu_antenne` | 6,3 | Überstand des Modul-Antennenendes über die Platinenkante |
-| `mcu_anschlag_ueber` | −0,2 | Oberkante des Endanschlags relativ zur Platinenoberseite. Negativ, damit eine Zehntel Drucküberhöhung die Platinenvorderkante nicht anhebt; der Anschlag greift weiterhin über 1,4 der 1,6 mm Kante. |
-| `mcu_unterbau` | 3,0 | Kabel werden von oben in die Lötaugen geführt, die Lötpunkte tragen also nach unten auf |
-| `mcu_usb_rand` / `mcu_com_rand` | 8,0 / 19,5 | Buchsenmitten von der im Gehäuse **rechten** Platinenkante |
-| `saeule_kabel_d` | 12 | zentrale Kabeldurchführung im Deckel, passt für die Adern der 5 Lampen |
+| `mosfet_h` | 16 | height of the MOSFET module incl. screw terminals |
+| `light_base_d` | 70 | outer diameter of the stack light base; determines the lid reinforcement (base + 10 mm) on the inside |
+| `light_bolt_circle_d` | 55 | |
+| `light_screw_n` | 4 | |
+| `pd_w` × `pd_l` | 20 × 31.5 | USB-C PD trigger board |
+| `usbc_protrusion` | 1.0 | protrusion of the port beyond the board edge |
+| `buck_l` × `buck_w` × `buck_h` | 30 × 18 × 6 | Mini560 – replaces the LM2596, 13 mm shorter and 8 mm lower |
+| `mcu_l` × `mcu_w` × `mcu_h` | 57.3 × 28.1 × 5.0 | ESP32-S3 DevKitC-1 N16R8; height = 1.6 board + 3.4 components |
+| `mcu_antenna` | 6.3 | overhang of the module's antenna end beyond the board edge |
+| `mcu_stop_above` | −0.2 | top of the end stop relative to the board top. Negative, so a tenth of print over-height does not lift the board's front edge; the stop still engages 1.4 of the 1.6 mm edge. |
+| `mcu_standoff` | 3.0 | wires are fed into the solder eyes from above, so the solder joints protrude downwards |
+| `mcu_usb_edge` / `mcu_com_edge` | 8.0 / 19.5 | port centres from the board edge that is on the **right** inside the enclosure |
+| `light_cable_d` | 12 | central cable feed-through in the lid, fits the wires of the 5 lamps |
 
-> **Konvention:** alle `*_h` sind **Gesamthöhen inklusive Platine**, so wie man sie mit dem
-> Messschieber über das ganze Modul abgreift. `*_unterbau` ist der Abstand der
-> Platinenunterseite von der Trennebene.
+> **Convention:** all `*_h` are **total heights including the board**, as measured with
+> calipers across the whole module. `*_standoff` is the distance of the board underside from
+> the parting plane.
 
-### Noch offen
+### Still open
 
-| Variable | aktuell | Anmerkung |
+| Variable | current | Note |
 |---|---|---|
-| `usbc_senk_t` | 1,2 | Reserve nach oben ist nur noch 0,2 mm (siehe oben) |
+| `usbc_recess_d` | 1.2 | only 0.2 mm of headroom left (see above) |
 
-Nach jeder Änderung genügt ein erneuter Export – Layout, Gehäusehöhe und alle Ausschnitte
-werden neu berechnet.
+After every change, a new export is enough – layout, enclosure height and all cutouts are
+recomputed.
 
-## Layout (Innenkoordinaten)
+## Layout (inner coordinates)
 
-| Baugruppe | Maße | Fläche X / Y | Bemerkung |
+| Assembly | Size | Area X / Y | Remarks |
 |---|---|---|---|
-| MOSFET 8-Kanal | 68 × 72 | 12…84 / 42…110 | Schraubklemmen zeigen zur linken/rechten Seitenwand, Clipse vorn/hinten. Nur 5 Kanäle belegt (5 Lampen), 3 bleiben frei. Höchste Baugruppe – gibt die Innenhöhe vor. |
-| ESP32-S3 | 28,1 × 57,3 | 90…118,1 / 58,7…116 | 90° gedreht, beide USB-C durch die Rückwand. Das Antennenende des Moduls ragt bis y = 52,4 über die Platinenkante hinaus |
-| Mini560 | 18 × 30 | 100…118 / 6…36 | 90° gedreht, rechte vordere Zone; die Clipse greifen die langen Kanten, die Lötpad-Kanten bleiben frei. Vordere **linke** Auflageleiste versetzt, siehe unten |
-| PD-Trigger | 20 × 31,5 | 57…77 / 0…31,5 | Buchse exakt mittig in der Frontwand (x = 67) |
+| MOSFET 8-channel | 68 × 72 | 12…84 / 42…110 | Screw terminals face the left/right side walls, clips front/back. Only 5 channels used (5 lamps), 3 stay free. Tallest assembly – sets the inner height. |
+| ESP32-S3 | 28.1 × 57.3 | 90…118.1 / 58.7…116 | Rotated 90°, both USB-C ports through the back wall. The module's antenna end overhangs the board edge up to y = 52.4 |
+| Mini560 | 18 × 30 | 100…118 / 6…36 | Rotated 90°, front right zone; the clips grip the long edges, the solder pad edges stay free. Front **left** support ledge shifted, see below |
+| PD trigger | 20 × 31.5 | 57…77 / 0…31.5 | Port exactly centred in the front wall (x = 67) |
 
-Die vordere linke Zone (x 12…50, y 0…40) bleibt frei für die Verdrahtung; die Lampenkabel
-laufen von den MOSFET-Klemmen zur Kabeldurchführung im Deckel.
+The front left zone (x 12…50, y 0…40) stays free for wiring; the lamp cables run from the
+MOSFET terminals to the cable feed-through in the lid.
 
-### Sonderfall: vordere linke Auflageleiste des Mini560
+### Special case: front left support ledge of the Mini560
 
-Auf der linken Platinenkante des Mini560 (Draufsicht auf die Bodenplatte, der
-USB-C-Eingang unten) sitzt ein Bauteil bündig mit der Kante – die Auflageleiste greift
-dort nicht. Sie rückt deshalb **3 mm nach vorn** (`buck_klemm_vl_versatz`) und ist
-zugleich **4 statt 6 mm breit** (`buck_klemm_vl_breite`), weil sie sonst der Lötstelle des
-Plus-Eingangs im Weg wäre. Zur Platinenvorderkante bleiben damit 3,4 mm.
+On the left board edge of the Mini560 (top view of the base plate, USB-C input at the
+bottom) a component sits flush with the edge – the support ledge cannot grip there. It
+therefore moves **3 mm forward** (`buck_clip_fl_shift`) and is at the same time **4 instead
+of 6 mm wide** (`buck_clip_fl_width`), because otherwise it would be in the way of the
+solder joint of the plus input. That leaves 3.4 mm to the board's front edge.
 
-| Klemme | y | Breite |
+| Clip | y | Width |
 |---|---|---|
-| links hinten | 27,6 | 6,0 |
-| rechts hinten | 27,6 | 6,0 |
-| rechts vorn | 14,4 | 6,0 |
-| **links vorn** | **11,4** | **4,0** |
+| left back | 27.6 | 6.0 |
+| right back | 27.6 | 6.0 |
+| right front | 14.4 | 6.0 |
+| **left front** | **11.4** | **4.0** |
 
-Möglich wird das durch die optionalen Parameter `klemmen_fest` / `klemmen_feder` von
-`platine_halter()`: eine Liste `[[position, breite], …]` je Kante. Ohne Angabe bleibt es
-beim symmetrischen Standard (zwei Klemmen bei 28 % und 72 % der Kantenlänge, je `klemm_b`
-breit), sodass sich einzelne Klemmen um Bauteile herumlegen lassen, ohne die Symmetrie
-für alle anderen Platinen aufzugeben.
+This is made possible by the optional parameters `clips_fixed` / `clips_spring` of
+`board_holder()`: a list `[[position, width], …]` per edge. Without them, the symmetric
+default applies (two clips at 28 % and 72 % of the edge length, each `clip_w` wide), so
+individual clips can be placed around components without giving up the symmetry for all
+other boards.
 
-## Druckempfehlung
+## Print recommendations
 
-| Teil | Orientierung | Hinweis |
+| Part | Orientation | Note |
 |---|---|---|
-| `body.stl` | **auf dem Deckel stehend**, Öffnung nach oben | stützfrei: die plane Deckelfläche liegt vollflächig auf dem Bett, die nach unten offenen Steckerschlitze zeigen dabei nach oben, und die Fase der Kabeldurchführung ist als 45°-Überhang selbsttragend |
-| `boden.stl` | flach, Clipse nach oben | stützfrei; die Senkungen liegen auf dem Druckbett und sind mit 45° selbsttragend |
+| `body.stl` | **standing on the lid**, opening facing up | support-free: the flat lid surface rests fully on the bed, the connector slots that are open at the bottom then face up, and the chamfer of the cable feed-through is self-supporting as a 45° overhang |
+| `base.stl` | flat, clips facing up | support-free; the countersinks face the print bed and are self-supporting at 45° |
 
-* Schichthöhe 0,2 mm, 3 Perimeter (Bodenplatte gern 4, damit die Clipse nicht abscheren),
-  Infill ≥ 25 %.
-* Material: PETG oder PLA+. PLA-Clipse sind spröder – bei häufigem Öffnen PETG bevorzugen.
-* Heat-Set-Inserts: 4 × M3 (Ø 4,0 × 6 mm) in den Eckdomen, 4 × M4 (Ø 5,6 × 8 mm) in den
-  Säulendomen. Alternativ `saeule_insert = false` für reine Durchgangslöcher.
+* Layer height 0.2 mm, 3 perimeters (4 for the base plate, so the clips do not shear off),
+  infill ≥ 25 %.
+* Material: PETG or PLA+. PLA clips are more brittle – prefer PETG if you open it often.
+* Heat-set inserts: 4 × M3 (Ø 4.0 × 6 mm) in the corner bosses, 4 × M4 (Ø 5.6 × 8 mm) in
+  the stack light bosses. Alternatively `light_insert = false` for plain through holes.
 
-## Pinbelegung (ESP32-S3 DevKitC-1, N16R8)
+## Pin assignment (ESP32-S3 DevKitC-1, N16R8)
 
-| Kanal | GPIO |
+| Channel | GPIO |
 |---|---|
 | 1 | **4** |
 | 2 | **5** |
@@ -199,60 +197,60 @@ für alle anderen Platinen aufzugeben.
 | 4 | **7** |
 | 5 | **15** |
 
-Beim S3 ist PWM kein Thema mehr: der LEDC-Block hat 16 unabhängige Kanäle mit bis zu
-14 Bit, und **jeder** GPIO kann darauf geroutet werden. Fünf gedimmte Lampen sind damit
-ein Dreizeiler.
+On the S3, PWM is no longer an issue: the LEDC block has 16 independent channels with up
+to 14 bits, and **every** GPIO can be routed to it. Five dimmed lamps are thus a few lines
+of code.
 
-### Finger weg von
+### Hands off
 
-| Pin | Warum |
+| Pin | Why |
 |---|---|
-| **35, 36, 37** | **Octal-PSRAM.** Das `R8` in N16R8 steht für 8 MB PSRAM, und die läuft über genau diese drei Pins. Bei den Quad-Varianten wären sie frei – bei dieser nicht. |
-| 26–32 | SPI-Flash des Moduls |
-| 0, 3, 45, 46 | Strapping-Pins (Bootmodus, JTAG-Quelle, VDD_SPI) |
-| 19, 20 | native USB-Datenleitungen (die „USB"-Buchse) |
-| 43, 44 | UART0, die „COM"-Buchse |
-| 38 (bzw. 48) | Onboard-RGB-LED. DevKitC-1 v1.1 nutzt GPIO38, v1.0 GPIO48; bei Klonen variiert das – im Zweifel beide probieren. |
+| **35, 36, 37** | **Octal PSRAM.** The `R8` in N16R8 stands for 8 MB PSRAM, and it runs over exactly these three pins. On the quad variants they would be free – not on this one. |
+| 26–32 | SPI flash of the module |
+| 0, 3, 45, 46 | strapping pins (boot mode, JTAG source, VDD_SPI) |
+| 19, 20 | native USB data lines (the "USB" port) |
+| 43, 44 | UART0, the "COM" port |
+| 38 (or 48) | on-board RGB LED. DevKitC-1 v1.1 uses GPIO38, v1.0 GPIO48; clones vary – when in doubt, try both. |
 
-Die fünf empfohlenen Pins sind beim Boot hochohmig. Das MOSFET-Modul schaltet bei LOW
-ein; hat es keine Pullups an den Steuereingängen, je 10 kΩ nach 3,3 V nachrüsten, sonst
-kann es beim Einschalten kurz flackern.
+The five recommended pins are high-impedance during boot. The MOSFET module switches on at
+LOW; if it has no pull-ups on its control inputs, add 10 kΩ to 3.3 V on each, otherwise it
+may flicker briefly at power-on.
 
-## Beschriftung der USB-Buchsen
+## Labels of the USB ports
 
-Auf der Deckeloberseite sitzt vertiefter Text (`mcu_text_tiefe` = 0,6 mm) über den beiden
-Buchsen. Um 180° gedreht, liest sich also **von hinten** – dort, wo man steckt.
+The top of the lid carries engraved text (`mcu_text_depth` = 0.6 mm) above the two ports.
+Rotated by 180°, it reads **from behind** – where you plug in.
 
-Die Buchsenmitten liegen nur 11,5 mm auseinander; bei lesbarer Schriftgröße stoßen „USB"
-und „COM" aneinander. Die Beschriftung wird deshalb über `mcu_text_spreizung` (1,6) gegen
-die Mitte auseinandergezogen. Bei nur zwei Buchsen bleibt die Zuordnung links/rechts
-eindeutig. `1.0` setzt sie exakt über die Buchsenmitten – dann muss `mcu_text_groesse`
-unter etwa 3,5 mm.
+The port centres are only 11.5 mm apart; at a legible font size "USB" and "COM" run into
+each other. The labels are therefore spread apart from the centre via `mcu_text_spread`
+(1.6). With only two ports, the left/right assignment stays unambiguous. `1.0` places them
+exactly above the port centres – then `mcu_text_size` has to go below about 3.5 mm.
 
-Das Modell schätzt die Textbreite ab (0,95 × Größe je Zeichen, am Rendering nachgemessen)
-und warnt beim Kompilieren, wenn es zu eng wird. Messen kann OpenSCAD Text nicht.
+The model estimates the text width (0.95 × size per character, measured on the render) and
+warns at compile time if it gets too tight. OpenSCAD cannot measure text.
 
-Gedruckt wird der Hauptkörper auf dem Deckel stehend – die Schrift liegt also am
-Druckbett und kommt sauber heraus, ohne Stützen.
+The main body is printed standing on the lid – the text faces the print bed and comes out
+clean, without supports.
 
+## Assembly order
 
-## Montagereihenfolge
+1. Press the inserts into the main body (M3 into the corner bosses, M4 into the stack light
+   bosses from the inside).
+2. Populate the base plate: press the MOSFET module, ESP32-S3, buck and PD board into the
+   clips.
+3. Wire up: USB-C PD → 12 V to the MOSFET module and the Mini560 input, output 3.3 V →
+   ESP32-S3 (3V3 pin), GPIOs → MOSFET control inputs (pin assignment see above), common
+   ground. The 3V3 pin feeds power bypassing the board's voltage regulator. According to
+   Espressif, powering via 3V3 and via USB are mutually exclusive – so when flashing via USB
+   it is better to disconnect the 3.3 V line (ground may stay).
+4. Thread the lamp cables through the lid feed-through and connect them to the MOSFET
+   terminals – 5 lamps, so 5 used channels plus a common return.
+5. Insert the base plate vertically from below (all three USB-C ports slide into their
+   slots) and fasten it with 4 × M3 countersunk screws.
+6. Place the stack light in the middle of the lid and fasten it with 4 × M4 – the screws on
+   the 55 mm bolt circle take care of the centering.
 
-1. Inserts in Hauptkörper einpressen (M3 in die Eckdome, M4 in die Säulendome von innen).
-2. Bodenplatte bestücken: MOSFET-Modul, ESP32-S3, Buck und PD-Board in die Clipse drücken.
-3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 3,3 V → ESP32-S3
-   (3V3-Pin), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
-   Der 3V3-Pin speist am Spannungsregler des Boards vorbei. Laut Espressif schließen sich
-   die Versorgung über 3V3 und über USB gegenseitig aus - zum Flashen per USB also besser
-   die 3,3-V-Leitung trennen (Masse darf bleiben).
-4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen –
-   5 Lampen, also 5 belegte Kanäle plus gemeinsame Rückleitung.
-5. Bodenplatte senkrecht von unten einführen (alle drei USB-C-Buchsen gleiten in ihre Schlitze),
-   mit 4 × M3-Senkkopf verschrauben.
-6. Signalsäule mittig auf den Deckel setzen und mit 4 × M4 verschrauben – die Schrauben
-   auf dem 55er Lochkreis übernehmen die Zentrierung.
+## Next stages
 
-## Nächste Ausbaustufen
-
-Kabelzugentlastung am USB-C-Eingang, Staubschutz/Dichtung, Wandmontagelaschen,
-Beschriftung, ggf. dreiteiliger Aufbau mit separatem Deckel.
+Cable strain relief at the USB-C input, dust protection/sealing, wall mounting tabs,
+labelling, possibly a three-part design with a separate lid.

@@ -1,10 +1,10 @@
-# Textdateien intern mit LF speichern
+# Store text files with LF internally
 * text=auto eol=lf
 
-# ASCII-STL ist zwar Text, soll aber unveraendert und ohne Diff-Rauschen bleiben
+# ASCII STL is text, but should stay unchanged and free of diff noise
 *.stl -text -diff
 
-# Binaerformate
+# Binary formats
 *.png binary
 *.jpg binary
 *.3mf binary

@@ -1,50 +1,50 @@
 # StatusStackLight
 
-Eine industrielle Signalsäule mit fünf Lampen, gesteuert von einem ESP32-S3 im
-3D-gedruckten Sockel – dimmbar, blinkend und pulsierend, per HTTP-API und Web-Interface im
-lokalen Netz. Im Alltag zeigt sie an, was die laufenden Claude-Code-Sessions gerade tun.
+An industrial stack light with five lamps, driven by an ESP32-S3 in a 3D-printed base –
+dimmable, blinking and pulsing, via an HTTP API and a web interface on the local network. In
+everyday use it shows what the running Claude Code sessions are doing right now.
 
-![Sockel mit Elektronik, Rendering](enclosure/OpenSCAD/preview/05_montiert.png)
+![Base with electronics, rendering](enclosure/OpenSCAD/preview/05_assembled.png)
 
-## Die drei Teile
+## The three parts
 
-| Ordner | Inhalt |
+| Folder | Contents |
 |---|---|
-| [`enclosure/`](enclosure/OpenSCAD/README.md) | Parametrischer Sockel in OpenSCAD: trägt die Säule und nimmt die gesamte Elektronik auf. Druckfertige STL-Dateien, Druckempfehlung, Montagereihenfolge. |
-| [`firmware/`](firmware/README.md) | PlatformIO-Firmware für den ESP32-S3: PWM-Ansteuerung mit Effekten, WLAN-Einrichtung per Captive Portal, Web-Interface, [HTTP-API](firmware/API.md). |
-| [`claude-code/`](claude-code/README.md) | PowerShell-Skript, das über Hooks den Zustand von Claude-Code-Sessions auf die Säule bringt. |
+| [`enclosure/`](enclosure/OpenSCAD/README.md) | Parametric base in OpenSCAD: carries the stack light and houses all the electronics. Print-ready STL files, print recommendations, assembly order. |
+| [`firmware/`](firmware/README.md) | PlatformIO firmware for the ESP32-S3: PWM drive with effects, WiFi setup via captive portal, web interface, [HTTP API](firmware/API.md). |
+| [`claude-code/`](claude-code/README.md) | PowerShell script that brings the state of Claude Code sessions to the stack light via hooks. |
 
-Die Teile bauen aufeinander auf, lassen sich aber auch einzeln nutzen: Die Firmware braucht
-den Sockel nicht, und die API steht jedem Client offen, nicht nur dem Hook-Skript.
+The parts build on each other but can also be used on their own: the firmware does not need
+the base, and the API is open to any client, not just the hook script.
 
 ## Hardware
 
-| Bauteil | |
+| Component | |
 |---|---|
-| Signalsäule | 5 Lampen (weiß, blau, grün, orange, rot), 12-V-LED-Module, Flansch mit 4 × M4 auf 55 mm Lochkreis |
-| Mikrocontroller | ESP32-S3 DevKitC-1 **N16R8** (16 MB Flash, 8 MB Octal-PSRAM) |
-| Treiber | 8-Kanal-MOSFET-Modul, LOW-aktiv; 5 Kanäle belegt |
-| Versorgung | USB-C-PD-Triggerboard (fordert 12 V an) → Mini560-Buck → 3,3 V an den 3V3-Pin des ESP32 |
-| Sockel | 138,8 × 120,8 × 35,8 mm, PETG oder PLA+, Heat-Set-Inserts 4 × M3 und 4 × M4 |
+| Stack light | 5 lamps (white, blue, green, orange, red), 12 V LED modules, flange with 4 × M4 on a 55 mm bolt circle |
+| Microcontroller | ESP32-S3 DevKitC-1 **N16R8** (16 MB flash, 8 MB octal PSRAM) |
+| Driver | 8-channel MOSFET module, active LOW; 5 channels used |
+| Power | USB-C PD trigger board (requests 12 V) → Mini560 buck → 3.3 V into the ESP32's 3V3 pin |
+| Base | 138.8 × 120.8 × 35.8 mm, PETG or PLA+, heat-set inserts 4 × M3 and 4 × M4 |
 
-Pinbelegung, Maße und Details stehen in den READMEs von [`enclosure/`](enclosure/OpenSCAD/README.md)
-und [`firmware/`](firmware/README.md).
+Pin assignment, dimensions and details are in the READMEs of
+[`enclosure/`](enclosure/OpenSCAD/README.md) and [`firmware/`](firmware/README.md).
 
-## Schnellstart
+## Quick start
 
-1. **Drucken:** `enclosure/OpenSCAD/body.stl` und `boden.stl`, stützfrei, siehe
-   [Druckempfehlung](enclosure/OpenSCAD/README.md#druckempfehlung).
-2. **Montieren und verdrahten** nach der
-   [Montagereihenfolge](enclosure/OpenSCAD/README.md#montagereihenfolge).
-3. **Flashen:** in `firmware/` mit [PlatformIO](https://platformio.org/) `pio run -t upload`,
-   siehe [Bauen und flashen](firmware/README.md#bauen-und-flashen).
-4. **WLAN einrichten:** Das Gerät öffnet beim ersten Start den Accesspoint
-   `StatusStackLight-XXXX`; die Konfigurationsseite erscheint von selbst, siehe
-   [WLAN einrichten](firmware/README.md#wlan-einrichten).
-5. **Ausprobieren:** `http://statusstacklight.local/` im Browser – jede Lampe lässt sich dort
-   einzeln in allen Parametern schalten.
-6. Optional: **Claude-Code-Anzeige** einrichten, siehe [`claude-code/`](claude-code/README.md).
+1. **Print:** `enclosure/OpenSCAD/body.stl` and `base.stl`, support-free, see the
+   [print recommendations](enclosure/OpenSCAD/README.md#print-recommendations).
+2. **Assemble and wire** following the
+   [assembly order](enclosure/OpenSCAD/README.md#assembly-order).
+3. **Flash:** in `firmware/` with [PlatformIO](https://platformio.org/) `pio run -t upload`,
+   see [Building and flashing](firmware/README.md#building-and-flashing).
+4. **Set up WiFi:** on first start the device opens the access point
+   `StatusStackLight-XXXX`; the setup page appears by itself, see
+   [WiFi setup](firmware/README.md#wifi-setup).
+5. **Try it out:** `http://statusstacklight.local/` in the browser – every lamp can be
+   switched there individually with all its parameters.
+6. Optional: set up the **Claude Code display**, see [`claude-code/`](claude-code/README.md).
 
-## Lizenz
+## License
 
-[MIT](LICENSE) – für Firmware, Skripte, Gehäusemodell und Dokumentation.
+[MIT](LICENSE) – for firmware, scripts, enclosure model and documentation.

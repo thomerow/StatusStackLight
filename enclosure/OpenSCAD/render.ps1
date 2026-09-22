@@ -1,21 +1,21 @@
 <#
 .SYNOPSIS
-    Erzeugt die Druckteile (STL) und die Vorschaubilder des Gehaeuses.
+    Generates the printable parts (STL) and the preview images of the enclosure.
 
 .DESCRIPTION
-    Laeuft vollstaendig ueber die OpenSCAD-Kommandozeile - die GUI wird nicht
-    geoeffnet. OpenSCAD schreibt seine Meldungen (auch echo()) auf stderr;
-    das Skript faengt sie ab und zeigt nur die echo()-Zeilen des Modells an.
+    Runs entirely through the OpenSCAD command line - the GUI is not opened.
+    OpenSCAD writes its messages (including echo()) to stderr; the script
+    captures them and only shows the model's echo() lines.
 
 .PARAMETER Only
-    All (Standard) | Stl | Preview
+    All (default) | Stl | Preview
 
 .PARAMETER OpenScad
-    Pfad zu openscad.exe, falls er nicht automatisch gefunden wird.
+    Path to openscad.exe, if it is not found automatically.
 
 .PARAMETER Render
-    Bilder aus dem vollen CGAL-Render statt aus der Vorschau. Deutlich
-    langsamer und OHNE die Platinen-Geister (%), dafuer ohne Vorschau-Artefakte.
+    Images from the full CGAL render instead of the preview. Much slower and
+    WITHOUT the board ghosts (%), but free of preview artefacts.
 
 .EXAMPLE
     .\render.ps1
@@ -35,165 +35,165 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Unter StrictMode wirft ein noch nie gesetztes $LASTEXITCODE beim Lesen.
+# Under StrictMode, reading a $LASTEXITCODE that was never set throws.
 $global:LASTEXITCODE = 0
 
 $Here       = Split-Path -Parent $PSCommandPath
-$Scad       = Join-Path $Here 'statusstacklight_gehaeuse.scad'
+$Scad       = Join-Path $Here 'statusstacklight_enclosure.scad'
 $PreviewDir = Join-Path $Here 'preview'
 
-if (-not (Test-Path $Scad)) { throw "Modell nicht gefunden: $Scad" }
+if (-not (Test-Path $Scad)) { throw "Model not found: $Scad" }
 
 # ---------------------------------------------------------------------------
-#  openscad.exe finden
+#  Find openscad.exe
 # ---------------------------------------------------------------------------
 function Resolve-OpenScad {
     param([string] $Hint)
 
-    $kandidaten = @()
-    if ($Hint) { $kandidaten += $Hint }
-    $imPfad = Get-Command openscad.exe -ErrorAction SilentlyContinue
-    if ($imPfad) { $kandidaten += $imPfad.Source }
-    $kandidaten += @(
+    $candidates = @()
+    if ($Hint) { $candidates += $Hint }
+    $inPath = Get-Command openscad.exe -ErrorAction SilentlyContinue
+    if ($inPath) { $candidates += $inPath.Source }
+    $candidates += @(
         (Join-Path $env:ProgramFiles 'OpenSCAD\openscad.exe')
         (Join-Path ${env:ProgramFiles(x86)} 'OpenSCAD\openscad.exe')
         (Join-Path $env:ProgramFiles 'OpenSCAD (Nightly)\openscad.exe')
         (Join-Path $env:LOCALAPPDATA 'Programs\OpenSCAD\openscad.exe')
     )
-    foreach ($k in $kandidaten) {
-        if ($k -and (Test-Path $k)) { return (Resolve-Path $k).Path }
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path $c)) { return (Resolve-Path $c).Path }
     }
-    throw 'openscad.exe nicht gefunden - Pfad bitte per -OpenScad angeben.'
+    throw 'openscad.exe not found - please pass the path with -OpenScad.'
 }
 
 $OS = Resolve-OpenScad -Hint $OpenScad
 Write-Host "OpenSCAD : $OS"
-Write-Host "Modell   : $Scad"
+Write-Host "Model    : $Scad"
 Write-Host ''
 
 # ---------------------------------------------------------------------------
-#  Aufruf-Wrapper
+#  Call wrapper
 # ---------------------------------------------------------------------------
-$script:EchoZeilen = $null
+$script:EchoLines = $null
 
 function Invoke-OpenScad {
     param(
-        [string]   $Ziel,
+        [string]   $Target,
         [string[]] $Defines = @(),
         [string[]] $Extra   = @()
     )
 
-    $argumente = @('-o', $Ziel)
-    foreach ($d in $Defines) { $argumente += @('-D', $d) }
-    $argumente += $Extra
-    $argumente += $Scad
+    $arguments = @('-o', $Target)
+    foreach ($d in $Defines) { $arguments += @('-D', $d) }
+    $arguments += $Extra
+    $arguments += $Scad
 
-    # WICHTIG: openscad.exe ist ein GUI-Subsystem-Binary und kehrt sofort
-    # zurueck, wenn PowerShell die Ausgabe nicht ueber eine echte Pipeline
-    # konsumiert. Das ForEach-Object erzwingt genau das - ohne die Pipeline
-    # laeuft das Skript weiter, bevor die Datei geschrieben ist.
-    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
-    $log = @(& $OS @argumente 2>&1 | ForEach-Object { "$_" })
+    # IMPORTANT: openscad.exe is a GUI subsystem binary and returns
+    # immediately unless PowerShell consumes its output through a real
+    # pipeline. The ForEach-Object forces exactly that - without the pipeline
+    # the script moves on before the file has been written.
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
+    $log = @(& $OS @arguments 2>&1 | ForEach-Object { "$_" })
     $code = $global:LASTEXITCODE
-    $uhr.Stop()
+    $clock.Stop()
 
-    if ($code -ne 0 -or -not (Test-Path $Ziel)) {
+    if ($code -ne 0 -or -not (Test-Path $Target)) {
         $log | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
-        throw "OpenSCAD ist fehlgeschlagen: $Ziel"
+        throw "OpenSCAD failed: $Target"
     }
 
-    # echo()-Ausgabe des Modells nur einmal pro Lauf zeigen
-    if ($null -eq $script:EchoZeilen) {
-        $script:EchoZeilen = @($log | Where-Object { "$_" -like 'ECHO:*' })
+    # Show the model's echo() output only once per run
+    if ($null -eq $script:EchoLines) {
+        $script:EchoLines = @($log | Where-Object { "$_" -like 'ECHO:*' })
     }
 
-    # Plausibilitaetskontrolle: hat der Lauf die Datei wirklich neu geschrieben?
-    $alter = (Get-Date) - (Get-Item $Ziel).LastWriteTime
-    if ($alter.TotalSeconds -gt 60) {
-        throw "$Ziel wurde nicht neu geschrieben - OpenSCAD hat offenbar nicht gewartet."
+    # Plausibility check: did the run really rewrite the file?
+    $age = (Get-Date) - (Get-Item $Target).LastWriteTime
+    if ($age.TotalSeconds -gt 60) {
+        throw "$Target was not rewritten - OpenSCAD apparently did not wait."
     }
 
-    $kb = [math]::Round((Get-Item $Ziel).Length / 1KB)
-    '{0,-26} {1,7} kB  {2,6:N1} s' -f (Split-Path $Ziel -Leaf), $kb, $uhr.Elapsed.TotalSeconds |
+    $kb = [math]::Round((Get-Item $Target).Length / 1KB)
+    '{0,-26} {1,7} kB  {2,6:N1} s' -f (Split-Path $Target -Leaf), $kb, $clock.Elapsed.TotalSeconds |
         Write-Host
 
-    # Warnungen durchreichen - die will man sehen
+    # Pass warnings through - you want to see those
     $log | Where-Object { "$_" -match 'WARNING|ERROR' } |
         ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
 }
 
 # ---------------------------------------------------------------------------
-#  Druckteile
+#  Printable parts
 # ---------------------------------------------------------------------------
 if ($Only -in @('All', 'Stl')) {
-    Write-Host 'Druckteile (CGAL-Render):' -ForegroundColor Cyan
-    foreach ($teil in @('body', 'boden')) {
-        Invoke-OpenScad -Ziel (Join-Path $Here "$teil.stl") `
-                        -Defines @(('teil="{0}"' -f $teil), 'zeige_platinen=false')
+    Write-Host 'Printable parts (CGAL render):' -ForegroundColor Cyan
+    foreach ($part in @('body', 'base')) {
+        Invoke-OpenScad -Target (Join-Path $Here "$part.stl") `
+                        -Defines @(('part="{0}"' -f $part), 'show_boards=false')
     }
     Write-Host ''
 }
 
 # ---------------------------------------------------------------------------
-#  Vorschaubilder
+#  Preview images
 #
-#  Kamera im Gimbal-Format: --camera=tx,ty,tz,rot_x,rot_y,rot_z,dist
-#    rot_x  0 = von oben, 90 = waagerecht, >90 = von unten
-#    rot_z    Drehung um die Hochachse
+#  Camera in gimbal format: --camera=tx,ty,tz,rot_x,rot_y,rot_z,dist
+#    rot_x  0 = from above, 90 = horizontal, >90 = from below
+#    rot_z    rotation around the vertical axis
 #
-#  Ohne 'Dist' uebernimmt --viewall --autocenter Zielpunkt und Abstand.
-#  Mit 'Ziel' + 'Dist' wird die Kamera fest gesetzt - noetig fuer Nahaufnahmen,
-#  weil --viewall immer auf das gesamte Teil herauszoomt. 'Ziel' ist ein Punkt
-#  in Modellkoordinaten (Innenkoordinaten + Wandstaerke).
+#  Without 'Dist', --viewall --autocenter determine target and distance.
+#  With 'Target' + 'Dist' the camera is fixed - needed for close-ups, because
+#  --viewall always zooms out to the whole part. 'Target' is a point in model
+#  coordinates (inner coordinates + wall thickness).
 # ---------------------------------------------------------------------------
 if ($Only -in @('All', 'Preview')) {
 
-    $bilder = @(
-        @{ Datei = '01_boden_iso.png';         Teil = 'boden';     Ghost = $false; Rot = '55,0,25';   Proj = 'perspective'
-           Ziel = '67,58,2';   Dist = 345 }
-        @{ Datei = '02_usbc_detail.png';       Teil = 'beides';    Ghost = $true;  Rot = '74,0,-26';  Proj = 'perspective'
-           Ziel = '67,3,6.25'; Dist = 58 }
-        @{ Datei = '03_body_innenansicht.png'; Teil = 'body';      Ghost = $false; Rot = '125,0,25';  Proj = 'perspective' }
-        @{ Datei = '04_body_deckel_oben.png';  Teil = 'body';      Ghost = $false; Rot = '0,0,0';     Proj = 'orthogonal'  }
-        @{ Datei = '05_montiert.png';          Teil = 'beides';    Ghost = $true;  Rot = '55,0,25';   Proj = 'perspective'
-           Ziel = '67,58,17';  Dist = 440 }
-        @{ Datei = '06_explosion.png';         Teil = 'explosion'; Ghost = $true;  Rot = '62,0,25';   Proj = 'perspective' }
+    $images = @(
+        @{ File = '01_base_iso.png';       Part = 'base';      Ghost = $false; Rot = '55,0,25';   Proj = 'perspective'
+           Target = '67,58,2';   Dist = 345 }
+        @{ File = '02_usbc_detail.png';    Part = 'both';      Ghost = $true;  Rot = '74,0,-26';  Proj = 'perspective'
+           Target = '67,3,6.25'; Dist = 58 }
+        @{ File = '03_body_inside.png';    Part = 'body';      Ghost = $false; Rot = '125,0,25';  Proj = 'perspective' }
+        @{ File = '04_body_lid_top.png';   Part = 'body';      Ghost = $false; Rot = '0,0,0';     Proj = 'orthogonal'  }
+        @{ File = '05_assembled.png';      Part = 'both';      Ghost = $true;  Rot = '55,0,25';   Proj = 'perspective'
+           Target = '67,58,17';  Dist = 440 }
+        @{ File = '06_exploded.png';       Part = 'explosion'; Ghost = $true;  Rot = '62,0,25';   Proj = 'perspective' }
     )
 
     if (-not (Test-Path $PreviewDir)) { New-Item -ItemType Directory -Path $PreviewDir | Out-Null }
 
-    $modus = if ($Render) { 'CGAL-Render, ohne Platinen-Geister' } else { 'Vorschau' }
-    Write-Host "Vorschaubilder ($modus):" -ForegroundColor Cyan
+    $mode = if ($Render) { 'CGAL render, without board ghosts' } else { 'preview' }
+    Write-Host "Preview images ($mode):" -ForegroundColor Cyan
 
-    foreach ($b in $bilder) {
-        if ($b.ContainsKey('Dist')) {
-            $extra = @("--camera=$($b.Ziel),$($b.Rot),$($b.Dist)")
+    foreach ($img in $images) {
+        if ($img.ContainsKey('Dist')) {
+            $extra = @("--camera=$($img.Target),$($img.Rot),$($img.Dist)")
         } else {
-            $extra = @("--camera=0,0,0,$($b.Rot),0", '--viewall', '--autocenter')
+            $extra = @("--camera=0,0,0,$($img.Rot),0", '--viewall', '--autocenter')
         }
         $extra += @(
             "--imgsize=$Width,$Height"
-            "--projection=$($b.Proj)"
+            "--projection=$($img.Proj)"
             '--colorscheme=Cornfield'
         )
         if ($Render) { $extra += '--render' }
 
-        Invoke-OpenScad -Ziel (Join-Path $PreviewDir $b.Datei) `
-                        -Defines @(('teil="{0}"' -f $b.Teil),
-                                   ('zeige_platinen={0}' -f $b.Ghost.ToString().ToLower())) `
+        Invoke-OpenScad -Target (Join-Path $PreviewDir $img.File) `
+                        -Defines @(('part="{0}"' -f $img.Part),
+                                   ('show_boards={0}' -f $img.Ghost.ToString().ToLower())) `
                         -Extra $extra
     }
     Write-Host ''
 }
 
 # ---------------------------------------------------------------------------
-#  Abgeleitete Masse und Kollisionspruefungen des Modells
+#  Derived dimensions and collision checks of the model
 # ---------------------------------------------------------------------------
-if ($script:EchoZeilen) {
-    Write-Host 'Modellausgabe:' -ForegroundColor Cyan
-    foreach ($z in $script:EchoZeilen) {
-        $text = "$z" -replace '^ECHO:\s*"?', '' -replace '"$', ''
-        $farbe = if ($text -match 'KOLLISION|schneidet') { 'Red' } else { 'Gray' }
-        Write-Host "  $text" -ForegroundColor $farbe
+if ($script:EchoLines) {
+    Write-Host 'Model output:' -ForegroundColor Cyan
+    foreach ($line in $script:EchoLines) {
+        $text = "$line" -replace '^ECHO:\s*"?', '' -replace '"$', ''
+        $color = if ($text -match 'COLLISION|cuts into') { 'Red' } else { 'Gray' }
+        Write-Host "  $text" -ForegroundColor $color
     }
 }

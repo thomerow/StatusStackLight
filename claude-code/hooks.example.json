@@ -9,7 +9,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "SessionStart"
             ],
@@ -27,7 +27,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "UserPromptSubmit"
             ],
@@ -46,9 +46,9 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
-              "Freigabe"
+              "Approval"
             ],
             "async": true
           }
@@ -63,9 +63,9 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
-              "Rueckfrage"
+              "Question"
             ],
             "async": true
           }
@@ -81,7 +81,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Stop"
             ],
@@ -99,7 +99,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "StopFailure"
             ],
@@ -117,7 +117,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "SessionEnd"
             ],
@@ -136,9 +136,9 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
-              "Freigabe"
+              "Approval"
             ],
             "async": true
           }
@@ -153,9 +153,9 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
-              "Rueckfrage"
+              "Question"
             ],
             "async": true
           }
@@ -170,13 +170,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(rm -rf *)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           },
           {
             "type": "command",
@@ -184,13 +184,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(rm -fr *)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           },
           {
             "type": "command",
@@ -198,13 +198,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(git push --force*)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           },
           {
             "type": "command",
@@ -212,13 +212,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(git push -f *)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           },
           {
             "type": "command",
@@ -226,13 +226,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(git reset --hard*)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           },
           {
             "type": "command",
@@ -240,13 +240,13 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "Danger"
             ],
             "async": true,
             "if": "Bash(git clean -fd*)",
-            "statusMessage": "Signalsaeule: Warnblitz"
+            "statusMessage": "StatusStackLight: warning flash"
           }
         ]
       }
@@ -261,7 +261,7 @@
             "args": [
               "-NoProfile",
               "-File",
-              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "C:\\path\\to\\StatusStackLight\\claude-code\\stacklight.ps1",
               "-Event",
               "ToolDone"
             ],

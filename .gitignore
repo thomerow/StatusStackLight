@@ -1,5 +1,5 @@
-# Regeln für das ganze Repo. Projektspezifisches steht in enclosure/.gitignore
-# und firmware/.gitignore.
+# Rules for the whole repo. Project-specific rules are in enclosure/.gitignore
+# and firmware/.gitignore.
 
 # --- Dropbox ----------------------------------------------------------------
 *conflicted copy*
@@ -8,14 +8,14 @@
 .dropbox.attr
 ~$*
 
-# --- Betriebssystem ---------------------------------------------------------
+# --- Operating system -------------------------------------------------------
 Thumbs.db
 ehthumbs.db
 desktop.ini
 .DS_Store
 ._*
 
-# --- Editoren / Werkzeuge ---------------------------------------------------
+# --- Editors / tools --------------------------------------------------------
 *.swp
 *~
 .vscode/

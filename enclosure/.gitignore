@@ -1,5 +1,5 @@
 # --- OpenSCAD ---------------------------------------------------------------
-# Zwischen-/Debugformate und Auto-Backups, jederzeit neu erzeugbar
+# Intermediate/debug formats and auto backups, can be regenerated any time
 *.csg
 *.ast
 *.term
@@ -8,10 +8,10 @@
 *-backup-*.scad
 .openscad/
 
-# Exportierte Druckteile (body.stl, boden.stl) und preview/*.png sind
-# ABSICHTLICH Teil des Repos -> hier NICHT ignorieren.
+# The exported printable parts (body.stl, base.stl) and preview/*.png are
+# DELIBERATELY part of the repo -> do NOT ignore them here.
 
-# --- Slicer / Druckvorbereitung ---------------------------------------------
+# --- Slicer / print preparation ---------------------------------------------
 *.gcode
 *.bgcode
 *.3mf
@@ -26,20 +26,20 @@ output/
 .dropbox.attr
 ~$*
 
-# --- Betriebssystem ---------------------------------------------------------
+# --- Operating system -------------------------------------------------------
 Thumbs.db
 ehthumbs.db
 desktop.ini
 .DS_Store
 ._*
 
-# --- Editoren / Werkzeuge ---------------------------------------------------
+# --- Editors / tools --------------------------------------------------------
 *.swp
 *~
 .vscode/
 .idea/
 .claude/
 
-# --- Temporäres -------------------------------------------------------------
+# --- Temporary --------------------------------------------------------------
 tmp/
 scratch/

@@ -1,82 +1,84 @@
 <#
 .SYNOPSIS
-    Steuert die Signalsaeule (StatusStackLight) aus Claude-Code-Hooks heraus.
+    Drives the stack light (StatusStackLight) from Claude Code hooks.
 
 .DESCRIPTION
-    Die Saeule zeigt einen ZUSTAND, die Hooks liefern EREIGNISSE. Dazwischen
-    liegt dieses Skript: jede Session legt ihren Zustand als Datei unter
-    ~/.claude/stacklight ab, und aus allen frischen Dateien wird berechnet, was
-    die fuenf Lampen anzeigen.
+    The stack light shows a STATE, the hooks deliver EVENTS. This script sits
+    in between: every session stores its state as a file under
+    ~/.claude/stacklight, and all fresh files together determine what the five
+    lamps show.
 
-    Das loest zwei Probleme, die eine direkte Verdrahtung von Hook zu HTTP hat:
-      * Mehrere parallele Sessions wuerden sich gegenseitig ausknipsen.
-      * Eine abgestuerzte Session liesse die Saeule fuer immer leuchten
-        (deshalb der Frischetest ueber StaleMinutes).
+    This solves two problems a direct hook-to-HTTP wiring would have:
+      * Several parallel sessions would switch each other off.
+      * A crashed session would leave the stack light lit forever
+        (hence the freshness check via StaleMinutes).
 
-    Gesendet wird bei jedem Lauf der komplette Sollzustand, auch wenn er sich
-    nicht geaendert hat. So heilt der naechste Hook jede Abweichung - ob durch
-    einen Neustart des ESP, das Web-Interface oder curl. Das kostet einen POST,
-    und es flackert nichts: Blink- und Pulsphase haengen an der gemeinsamen
-    Uhr des Geraets, nicht am Zeitpunkt der Anfrage.
+    Every run sends the complete target state, even if nothing has changed.
+    That way the next hook heals any deviation - whether caused by an ESP
+    restart, the web interface or curl. It costs one POST, and nothing
+    flickers: the blink and pulse phase follows the device's common clock, not
+    the time of the request.
 
-    Anzeige:
-      weiss   bereit      Session offen, nichts los         schwach, atmet sehr langsam
-      gruen   fertig      gerade fertig geworden            ruhig
-      blau    arbeitet    Claude denkt/arbeitet             langsam pulsierend
-      orange  fragt       Rueckfrage an dich                ruhig
-      orange  wartet      braucht eine Freigabe  <- der wichtige  blinkend
-      rot     Fehler      etwas ging schief                 rastet bis zum
-                                                            naechsten Prompt
+    Display:
+      white   ready       session open, nothing going on    dim, breathes very slowly
+      green   done        just finished                     steady
+      blue    working     Claude is thinking/working        slow pulse
+      orange  asking      a question for you                steady
+      orange  waiting     needs an approval  <- the important one  blinking
+      red     error       something went wrong              latched until the
+                                                            next prompt
 
-    Genau EINE von bereit/fertig/arbeitet/fragt/wartet brennt (Rangfolge von
-    rechts nach links); Rot liegt unabhaengig darueber.
+    Exactly ONE of ready/done/working/asking/waiting is lit (priority from
+    right to left); red sits on top independently.
 
-    Der Unterschied zwischen gruen und weiss ist zeitlich: gruen heisst "das
-    Ergebnis ist frisch", weiss heisst "liegt schon eine Weile" oder "gerade
-    erst geoeffnet". Nach FertigMinuten faellt gruen auf weiss zurueck. Weil
-    danach womoeglich kein Hook mehr feuert, startet Stop dafuer einen
-    Nachzuegler im Hintergrund (-Event Tick), der nach Ablauf einmal neu
-    rechnet.
+    The difference between green and white is time: green means "the result
+    is fresh", white means "has been sitting there a while" or "just opened".
+    After DoneMinutes, green falls back to white. Since no hook may fire after
+    that, Stop starts a background straggler (-Event Tick) that recomputes
+    once when the time is up.
 
-    Orange geht wieder aus, sobald das freigegebene Werkzeug gelaufen ist
-    (PostToolUse -> -Event ToolDone). Ohne das bliebe es nach einer Freigabe
-    bis zum Ende der Antwort stehen - eine Freigabe ist kein neuer Prompt.
+    Orange goes off again as soon as the approved tool has run
+    (PostToolUse -> -Event ToolDone). Without that it would stay lit after an
+    approval until the end of the response - an approval is not a new prompt.
 
-    Sessionzustaende in den Dateien: idle (geoeffnet), working, asking
-    (Rueckfrage), waiting (Freigabe), done.
+    Session states in the files: idle (opened), working, asking (question),
+    waiting (approval), done.
 
 .PARAMETER Event
-    SessionStart | UserPromptSubmit | Freigabe | Rueckfrage | ToolDone |
+    SessionStart | UserPromptSubmit | Approval | Question | ToolDone |
     Stop | StopFailure | ToolFailure | SessionEnd | Danger | Tick |
     SelfTest | AllOff | Status
 
 .NOTES
-    Wird als Claude-Code-Hook mit async=true aufgerufen und blockiert den
-    Agenten daher nicht. Das Skript beendet sich IMMER mit Exit-Code 0 -
-    eine kaputte Lampe darf niemals die Arbeit aufhalten.
+    Called as a Claude Code hook with async=true and therefore does not block
+    the agent. The script ALWAYS exits with exit code 0 - a broken lamp must
+    never hold up the work.
 
-    Braucht die Firmware aus firmware/ in diesem Repo (API /api/lamps).
+    Requires the firmware from firmware/ in this repo (API /api/lamps).
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('SessionStart', 'UserPromptSubmit', 'Freigabe', 'Rueckfrage',
+    # 'Freigabe' and 'Rueckfrage' are the former German names of Approval and
+    # Question, still accepted until every settings.json has been migrated.
+    [ValidateSet('SessionStart', 'UserPromptSubmit', 'Approval', 'Question',
                  'ToolDone', 'Stop', 'StopFailure', 'ToolFailure', 'SessionEnd',
-                 'Danger', 'Tick', 'SelfTest', 'AllOff', 'Status')]
+                 'Danger', 'Tick', 'SelfTest', 'AllOff', 'Status',
+                 'Freigabe', 'Rueckfrage')]
     [string] $Event,
 
-    # Nur fuer -Event Tick: so lange vorher warten.
-    [int]    $WarteSekunden = 0,
+    # Only for -Event Tick: wait this long first.
+    [int]    $WaitSeconds = 0,
 
     [string] $SessionId,
     [string] $BaseUrl      = $(if ($env:STACKLIGHT_URL) { $env:STACKLIGHT_URL } else { 'http://statusstacklight' }),
 
-    # Aelter als das -> die Session gilt als abgestuerzt und wird vergessen.
+    # Older than this -> the session counts as crashed and is forgotten.
     [int]    $StaleMinutes = 60,
 
-    # So lange nach dem Fertigwerden zeigt gruen "frisch fertig", danach faellt
-    # es auf weiss zurueck.
-    [int]    $FertigMinuten = 5,
+    # For this long after finishing, green shows "freshly done", then it falls
+    # back to white.
+    [int]    $DoneMinutes  = 5,
 
     [double] $FlashSeconds = 1.2,
     [switch] $Quiet
@@ -84,63 +86,68 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
+switch ($Event) {
+    'Freigabe'   { $Event = 'Approval' }
+    'Rueckfrage' { $Event = 'Question' }
+}
+
 $StateDir  = Join-Path $HOME '.claude\stacklight'
 $LogFile   = Join-Path $StateDir '_error.log'
 
-# Reihenfolge wie an der Saeule von oben nach unten - nur fuer die Ausgabe von
+# Order as on the stack light from top to bottom - only for the output of
 # -Event Status.
-$LAMPEN = 'red', 'orange', 'green', 'blue', 'white'
+$LAMPS = 'red', 'orange', 'green', 'blue', 'white'
 
 # ---------------------------------------------------------------------------
-#  Anzeige
+#  Display
 # ---------------------------------------------------------------------------
 #
-# Hier wird geschraubt, wenn die Saeule anders aussehen soll - sonst nirgends.
+# This is the place to adjust how the stack light looks - nowhere else.
 #
-# Die Helligkeiten sind aneinander angeglichen, nicht gleich: die weisse Lampe
-# ist mit Abstand die hellste und braucht deutlich weniger Prozent als die
-# uebrigen, um gleich hell zu wirken. Als Dauerlicht reichen ihr um 12 %,
-# damit sie abends im Augenwinkel nicht stoert; atmend braucht sie einen
-# hoeheren Gipfel, siehe bereit.
+# The brightness values are matched to each other, not equal: the white lamp
+# is by far the brightest and needs much less percent than the others to look
+# equally bright. As a steady light around 12 % is enough, so it does not
+# bother you from the corner of your eye in the evening; breathing, it needs a
+# higher peak, see ready.
 #
-# frequency ist der Blink- bzw. Pulsiertakt in Hz, duty der Anteil der Periode,
-# in dem eine blinkende Lampe leuchtet.
+# frequency is the blink or pulse rate in Hz, duty the share of the period
+# during which a blinking lamp is lit.
 
-$Anzeige = [ordered]@{
-    # Grundzustand: eine Session steht offen, es passiert gerade nichts.
-    # Atmet sehr langsam statt dauerhaft zu leuchten: ein Standlicht, das
-    # stundenlang brennt, blendet man irgendwann aus - das Atmen haelt es als
-    # "lebt noch" lesbar, ohne Unruhe. Ruhiger als das blaue Arbeiten, damit
-    # die beiden nicht verwechselt werden. 30 % sind der Gipfel des Atemzugs.
-    bereit   = @{ lampe = 'white';  effect = 'pulse';  brightness = 30; frequency = 0.15 }
+$Display = [ordered]@{
+    # Base state: a session is open, nothing is happening right now.
+    # Breathes very slowly instead of staying steady: a light that burns for
+    # hours eventually gets tuned out - breathing keeps it readable as "still
+    # alive" without restlessness. Calmer than the blue working pulse, so the
+    # two are not confused. 30 % is the peak of the breath.
+    ready   = @{ lamp = 'white';  effect = 'pulse';  brightness = 30; frequency = 0.15 }
 
-    # Frisch fertig. Ruhig und ohne Bewegung - es ist nichts zu tun, es liegt
-    # nur etwas zum Lesen da.
-    fertig   = @{ lampe = 'green';  effect = 'steady'; brightness = 45 }
+    # Freshly done. Calm and without motion - there is nothing to do, there is
+    # just something to read.
+    done    = @{ lamp = 'green';  effect = 'steady'; brightness = 45 }
 
-    # Claude arbeitet. Langsames Pulsieren, weil es Bewegung ohne Unruhe ist:
-    # man sieht aus dem Augenwinkel, dass es laeuft, wird aber nicht
-    # angesprochen. 0,3 Hz sind gut drei Sekunden je Atemzug.
-    arbeitet = @{ lampe = 'blue';   effect = 'pulse';  brightness = 70; frequency = 0.3 }
+    # Claude is working. Slow pulsing, because it is motion without
+    # restlessness: you see from the corner of your eye that it is running,
+    # but you are not being called. 0.3 Hz is a good three seconds per breath.
+    working = @{ lamp = 'blue';   effect = 'pulse';  brightness = 70; frequency = 0.3 }
 
-    # Claude hat eine Rueckfrage. Orange, weil es auf dich wartet; dauerhaft
-    # statt blinkend, damit man schon von weitem sieht, ob es eine Frage oder
-    # eine Freigabe ist.
-    fragt    = @{ lampe = 'orange'; effect = 'steady'; brightness = 40 }
+    # Claude has a question. Orange, because it is waiting for you; steady
+    # rather than blinking, so you can tell from afar whether it is a question
+    # or an approval.
+    asking  = @{ lamp = 'orange'; effect = 'steady'; brightness = 40 }
 
-    # Wartet auf eine Freigabe - der wichtige Zustand, denn bis dahin steht
-    # die Arbeit still. Hartes Blinken statt Pulsieren: das hier SOLL dich
-    # ansprechen. Die Aufmerksamkeit kommt vom Blinken, nicht von der
-    # Helligkeit - mit 100 % ist Orange aus der Naehe unangenehm grell.
-    wartet   = @{ lampe = 'orange'; effect = 'blink';  brightness = 40; frequency = 1.2; duty = 55 }
+    # Waiting for an approval - the important state, because the work stands
+    # still until then. Hard blinking instead of pulsing: this one SHOULD call
+    # you. The attention comes from the blinking, not from the brightness - at
+    # 100 %, orange is unpleasantly glaring up close.
+    waiting = @{ lamp = 'orange'; effect = 'blink';  brightness = 40; frequency = 1.2; duty = 55 }
 
-    # Fehler. Liegt unabhaengig ueber allem anderen und rastet bis zum
-    # naechsten Prompt.
-    fehler   = @{ lampe = 'red';    effect = 'steady'; brightness = 100 }
+    # Error. Sits on top of everything else independently and stays latched
+    # until the next prompt.
+    error   = @{ lamp = 'red';    effect = 'steady'; brightness = 100 }
 }
 
 # ---------------------------------------------------------------------------
-#  Hilfsfunktionen
+#  Helpers
 # ---------------------------------------------------------------------------
 
 function Write-Log([string] $Message) {
@@ -150,40 +157,40 @@ function Write-Log([string] $Message) {
     } catch { }
 }
 
-# Claude Code reicht dem Hook ein JSON-Objekt auf stdin. IsInputRedirected
-# verhindert, dass das Skript an einer interaktiven Konsole auf EOF wartet.
+# Claude Code passes the hook a JSON object on stdin. IsInputRedirected keeps
+# the script from waiting for EOF on an interactive console.
 function Read-HookInput {
     try {
         if ([Console]::IsInputRedirected) {
             $raw = [Console]::In.ReadToEnd()
             if ($raw -and $raw.Trim()) { return ($raw | ConvertFrom-Json) }
         }
-    } catch { Write-Log "stdin nicht lesbar: $_" }
+    } catch { Write-Log "could not read stdin: $_" }
     return $null
 }
 
-# Zweite, genaue Pruefung fuer den Warnblitz. Die "if"-Bedingungen in
-# settings.json sind nur ein grober Vorfilter: Befehle, die Claude Code nicht
-# sauber zerlegen kann (Schleifen, $(...), Heredocs), laesst es sicherheitshalber
-# durch - schon `for i in 1; do echo "$(echo harmlos)"; done` passiert den
-# Vorfilter. Ein Warnblitz, der bei harmlosen Befehlen kommt, gewoehnt einem das
-# Hinsehen ab. Deshalb hier der Blick auf den tatsaechlichen Befehlstext.
+# Second, exact check for the warning flash. The "if" conditions in
+# settings.json are only a rough pre-filter: commands that Claude Code cannot
+# parse cleanly (loops, $(...), heredocs) are let through to be safe - even
+# `for i in 1; do echo "$(echo harmless)"; done` passes the pre-filter. A
+# warning flash that comes for harmless commands trains you to stop looking.
+# Hence this look at the actual command text.
 #
-# Ohne Hook-Eingabe (Aufruf von Hand, -Event Danger zum Testen) wird geblitzt.
-$GefaehrlicheBefehle = @(
+# Without hook input (manual call, -Event Danger for testing) it flashes.
+$DangerousCommands = @(
     '\brm\s+(-\w*\s+)*-\w*([rR]\w*f|f\w*[rR])'     # rm -rf, -fr, -Rf, -rfv ...
     '\bgit\s+push\b.*\s(--force\b|-f\b)'
     '\bgit\s+reset\s+--hard\b'
     '\bgit\s+clean\s+-\w*f'
 )
 
-function Test-Gefaehrlich {
+function Test-Dangerous {
     param($HookInput)
-    $befehl = $null
-    try { $befehl = "$($HookInput.tool_input.command)" } catch { }
-    if (-not $befehl) { return $true }
-    foreach ($muster in $GefaehrlicheBefehle) {
-        if ($befehl -cmatch $muster) { return $true }
+    $command = $null
+    try { $command = "$($HookInput.tool_input.command)" } catch { }
+    if (-not $command) { return $true }
+    foreach ($pattern in $DangerousCommands) {
+        if ($command -cmatch $pattern) { return $true }
     }
     return $false
 }
@@ -196,8 +203,8 @@ function Resolve-SessionId {
         if ($id) { return ($id -replace '[^A-Za-z0-9_.-]', '_') }
     }
     if ($env:CLAUDE_SESSION_ID) { return ($env:CLAUDE_SESSION_ID -replace '[^A-Za-z0-9_.-]', '_') }
-    # Notfallname: die Saeule funktioniert weiter, nur laufen dann alle
-    # parallelen Sessions in einer Datei zusammen. Siehe -Event Status.
+    # Fallback name: the stack light keeps working, but all parallel sessions
+    # then share a single file. See -Event Status.
     return 'default'
 }
 
@@ -230,167 +237,163 @@ function Get-SessionState {
     try { return (Get-Content $file -Raw | ConvertFrom-Json).state } catch { return $null }
 }
 
-# Gruen soll nach FertigMinuten von selbst auf weiss fallen. Nach einem Stop
-# feuert aber womoeglich lange kein Hook mehr - also startet Stop einen
-# Nachzuegler, der die Zeit absitzt und dann einmal neu rechnet.
+# Green should fall back to white by itself after DoneMinutes. But after a
+# Stop, no hook may fire for a long time - so Stop starts a straggler that
+# waits out the time and then recomputes once.
 #
-# Es laeuft immer nur einer: ein neuer Stop beendet den vorigen. Das ist auch
-# bei mehreren Sessions richtig, denn der juengste Stop ist der, dessen Gruen
-# am laengsten gilt; aeltere sind bis dahin ohnehin abgelaufen. PID und
-# Startzeit stehen in _timer.json, damit nie ein fremder Prozess erwischt
-# wird, der zufaellig die PID eines laengst beendeten Nachzueglers geerbt hat.
-function Start-FertigTimer {
-    if ($FertigMinuten -le 0) { return }
+# Only one ever runs: a new Stop ends the previous one. That is right with
+# several sessions too, because the most recent Stop is the one whose green
+# lasts longest; older ones have expired by then anyway. PID and start time
+# are kept in _timer.json, so a foreign process that happens to have
+# inherited the PID of a long-finished straggler is never hit.
+function Start-DoneTimer {
+    if ($DoneMinutes -le 0) { return }
     $timerFile = Join-Path $StateDir '_timer.json'
 
     if (Test-Path $timerFile) {
         try {
-            $alt = Get-Content $timerFile -Raw | ConvertFrom-Json
-            $p   = Get-Process -Id $alt.pid -ErrorAction Stop
-            if ($p.StartTime.ToUniversalTime().Ticks -eq [int64] $alt.start) {
-                Stop-Process -Id $alt.pid -Force -ErrorAction SilentlyContinue
+            $old = Get-Content $timerFile -Raw | ConvertFrom-Json
+            $p   = Get-Process -Id $old.pid -ErrorAction Stop
+            if ($p.StartTime.ToUniversalTime().Ticks -eq [int64] $old.start) {
+                Stop-Process -Id $old.pid -Force -ErrorAction SilentlyContinue
             }
         } catch { }
     }
 
-    $warte = $FertigMinuten * 60 + 2
+    $wait = $DoneMinutes * 60 + 2
     $p = Start-Process -FilePath (Get-Process -Id $PID).Path -WindowStyle Hidden -PassThru `
             -ArgumentList @('-NoProfile', '-File', "`"$PSCommandPath`"",
-                            '-Event', 'Tick', '-WarteSekunden', $warte, '-BaseUrl', $BaseUrl,
-                            '-FertigMinuten', $FertigMinuten, '-StaleMinutes', $StaleMinutes)
+                            '-Event', 'Tick', '-WaitSeconds', $wait, '-BaseUrl', $BaseUrl,
+                            '-DoneMinutes', $DoneMinutes, '-StaleMinutes', $StaleMinutes)
     @{ pid = $p.Id; start = $p.StartTime.ToUniversalTime().Ticks } |
         ConvertTo-Json -Compress | Set-Content -Path $timerFile -Encoding utf8
 }
 
-# Baut einen Lampenzustand aus einem Eintrag der Anzeigetabelle.
+# Builds a lamp state from an entry of the display table.
 #
-# Die Felder werden auch fuer ausgeschaltete Lampen gefuellt: die Firmware
-# merkt sich Effekt und Helligkeit ueber das Ausschalten hinweg, und im
-# Web-Interface steht dann nicht ueberall 100 % / steady, sobald man eine
-# Lampe von Hand einschaltet.
-function New-Lampe {
-    param([hashtable] $Vorgabe, [bool] $An)
+# The fields are filled in for lamps that are off, too: the firmware keeps
+# effect and brightness across switching off, and the web interface then does
+# not show 100 % / steady everywhere as soon as you turn a lamp on by hand.
+function New-Lamp {
+    param([hashtable] $Spec, [bool] $On)
 
     return [ordered]@{
-        on         = $An
-        effect     = $(if ($Vorgabe.effect) { $Vorgabe.effect } else { 'steady' })
-        brightness = [int]    $(if ($null -ne $Vorgabe.brightness) { $Vorgabe.brightness } else { 100 })
-        frequency  = [double] $(if ($null -ne $Vorgabe.frequency)  { $Vorgabe.frequency }  else { 1.0 })
-        duty       = [int]    $(if ($null -ne $Vorgabe.duty)       { $Vorgabe.duty }       else { 50 })
+        on         = $On
+        effect     = $(if ($Spec.effect) { $Spec.effect } else { 'steady' })
+        brightness = [int]    $(if ($null -ne $Spec.brightness) { $Spec.brightness } else { 100 })
+        frequency  = [double] $(if ($null -ne $Spec.frequency)  { $Spec.frequency }  else { 1.0 })
+        duty       = [int]    $(if ($null -ne $Spec.duty)       { $Spec.duty }       else { 50 })
     }
 }
 
-# Welcher der Zustaende brennt gerade? Liefert den Schluesselnamen aus
-# $Anzeige oder $null, wenn gar keine Session offen ist.
-function Get-Hauptzustand {
-    $jetzt        = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    $grenze       = $jetzt - ($StaleMinutes  * 60)
-    $fertigGrenze = $jetzt - ($FertigMinuten * 60)
-    $sessions     = @()
+# Which of the states is lit right now? Returns the key from $Display, or
+# $null if no session is open at all.
+function Get-MainState {
+    $now       = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $staleEdge = $now - ($StaleMinutes * 60)
+    $doneEdge  = $now - ($DoneMinutes  * 60)
+    $sessions  = @()
 
     foreach ($f in (Get-ChildItem -Path $StateDir -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
-        if ($f.Name -like '_*') { continue }        # Hilfsdateien ueberspringen
+        if ($f.Name -like '_*') { continue }        # skip helper files
         try { $s = Get-Content $f.FullName -Raw | ConvertFrom-Json } catch { continue }
-        if (-not $s -or $s.ts -lt $grenze) {
-            Remove-Item $f.FullName -Force -ErrorAction SilentlyContinue   # abgestuerzte Session
+        if (-not $s -or $s.ts -lt $staleEdge) {
+            Remove-Item $f.FullName -Force -ErrorAction SilentlyContinue   # crashed session
             continue
         }
         $sessions += $s
     }
 
-    $offen    = $sessions.Count -gt 0
-    $wartet   = @($sessions | Where-Object { $_.state -eq 'waiting' }).Count -gt 0
-    $fragt    = @($sessions | Where-Object { $_.state -eq 'asking'  }).Count -gt 0
-    $arbeitet = @($sessions | Where-Object { $_.state -eq 'working' }).Count -gt 0
-    # Nur 'done' zaehlt als fertig, und nur solange es frisch ist. 'idle'
-    # (frisch geoeffnete Session) faellt bewusst durch bis auf 'bereit'.
-    # -gt, nicht -ge: sonst hiesse -FertigMinuten 0 nicht "nie gruen", sondern
-    # "gruen, solange der Zeitstempel in dieselbe Sekunde faellt".
-    $fertig   = @($sessions | Where-Object { $_.state -eq 'done' -and $_.ts -gt $fertigGrenze }).Count -gt 0
-    $fehler   = @($sessions | Where-Object { $_.error }).Count -gt 0
+    $open    = $sessions.Count -gt 0
+    $waiting = @($sessions | Where-Object { $_.state -eq 'waiting' }).Count -gt 0
+    $asking  = @($sessions | Where-Object { $_.state -eq 'asking'  }).Count -gt 0
+    $working = @($sessions | Where-Object { $_.state -eq 'working' }).Count -gt 0
+    # Only 'done' counts as done, and only while it is fresh. 'idle' (freshly
+    # opened session) deliberately falls through to 'ready'.
+    # -gt, not -ge: otherwise -DoneMinutes 0 would not mean "never green" but
+    # "green as long as the timestamp falls into the same second".
+    $done    = @($sessions | Where-Object { $_.state -eq 'done' -and $_.ts -gt $doneEdge }).Count -gt 0
+    $failed  = @($sessions | Where-Object { $_.error }).Count -gt 0
 
-    $haupt = if     ($wartet)   { 'wartet'   }
-             elseif ($fragt)    { 'fragt'    }
-             elseif ($arbeitet) { 'arbeitet' }
-             elseif ($fertig)   { 'fertig'   }
-             elseif ($offen)    { 'bereit'   }
-             else               { $null      }
+    $main = if     ($waiting) { 'waiting' }
+            elseif ($asking)  { 'asking'  }
+            elseif ($working) { 'working' }
+            elseif ($done)    { 'done'    }
+            elseif ($open)    { 'ready'   }
+            else              { $null     }
 
-    return [pscustomobject]@{ Haupt = $haupt; Fehler = $fehler }
+    return [pscustomobject]@{ Main = $main; Error = $failed }
 }
 
-# Vollstaendiger Sollzustand aller fuenf Lampen.
+# Complete target state of all five lamps.
 #
-# Es werden immer alle fuenf beschrieben, nie nur die geaenderten. Das kostet
-# nichts (ein einziger Request setzt alle) und repariert nebenbei jede
-# Abweichung, die durch manuelles Schalten oder einen Neustart des ESP
-# entstanden ist.
-function Get-Lampen {
-    $lage = Get-Hauptzustand
+# All five are always described, never just the changed ones. That costs
+# nothing (a single request sets all of them) and repairs any deviation
+# caused by manual switching or an ESP restart along the way.
+function Get-Lamps {
+    $situation = Get-MainState
 
-    $ziel = [ordered]@{}
-    foreach ($name in $LAMPEN) { $ziel[$name] = New-Lampe -Vorgabe @{} -An $false }
+    $target = [ordered]@{}
+    foreach ($name in $LAMPS) { $target[$name] = New-Lamp -Spec @{} -On $false }
 
-    # Zwei Zustaende teilen sich Orange (fragt/wartet). Ein ausgeschalteter
-    # Eintrag darf einen eingeschalteten derselben Lampe nicht ueberschreiben -
-    # sonst entschiede die Reihenfolge der Tabelle, ob Orange ueberhaupt angeht.
-    $gesetzt = @{}
-    foreach ($zustand in $Anzeige.Keys) {
-        $v  = $Anzeige[$zustand]
-        $an = if ($zustand -eq 'fehler') { $lage.Fehler } else { $zustand -eq $lage.Haupt }
-        if ($gesetzt[$v.lampe] -and -not $an) { continue }
-        $ziel[$v.lampe] = New-Lampe -Vorgabe $v -An $an
-        if ($an) { $gesetzt[$v.lampe] = $true }
+    # Two states share orange (asking/waiting). An entry that is off must not
+    # overwrite one of the same lamp that is on - otherwise the order of the
+    # table would decide whether orange comes on at all.
+    $claimed = @{}
+    foreach ($state in $Display.Keys) {
+        $spec = $Display[$state]
+        $on   = if ($state -eq 'error') { $situation.Error } else { $state -eq $situation.Main }
+        if ($claimed[$spec.lamp] -and -not $on) { continue }
+        $target[$spec.lamp] = New-Lamp -Spec $spec -On $on
+        if ($on) { $claimed[$spec.lamp] = $true }
     }
 
-    return $ziel
+    return $target
 }
 
-# Ein Request fuer alle fuenf Lampen. Die Firmware uebernimmt sie atomar -
-# entweder passt alles, oder es aendert sich nichts.
-function Send-Lampen {
-    param($Ziel)
+# One request for all five lamps. The firmware applies them atomically -
+# either everything fits or nothing changes.
+function Send-Lamps {
+    param($Target)
 
-    $json = ConvertTo-Json -InputObject $Ziel -Depth 4 -Compress
+    $json = ConvertTo-Json -InputObject $Target -Depth 4 -Compress
     try {
         Invoke-RestMethod -Uri "$BaseUrl/api/lamps" -Method Post -Body $json `
                           -ContentType 'application/json' -TimeoutSec 2 -ErrorAction Stop | Out-Null
         return $true
     } catch {
-        Write-Log "POST /api/lamps fehlgeschlagen: $($_.Exception.Message)"
+        Write-Log "POST /api/lamps failed: $($_.Exception.Message)"
         return $false
     }
 }
 
-function Update-Lampen { Send-Lampen -Ziel (Get-Lampen) }
-
 # ---------------------------------------------------------------------------
-#  Hauptlauf
+#  Main
 # ---------------------------------------------------------------------------
 try {
     if (-not (Test-Path $StateDir)) {
         New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
     }
 
-    # Der Nachzuegler wartet VOR dem Mutex - sonst saesse er fuenf Minuten
-    # darauf und blockierte jeden anderen Hook.
-    if ($Event -eq 'Tick' -and $WarteSekunden -gt 0) { Start-Sleep -Seconds $WarteSekunden }
+    # The straggler waits BEFORE the mutex - otherwise it would sit on it for
+    # five minutes and block every other hook.
+    if ($Event -eq 'Tick' -and $WaitSeconds -gt 0) { Start-Sleep -Seconds $WaitSeconds }
 
-    # PostToolUse feuert nach jedem Werkzeugaufruf, also sehr oft. In aller
-    # Regel wartet die Session dabei nicht, und dann gibt es nichts zu tun -
-    # ohne Mutex und ohne Anfrage an die Saeule sofort wieder raus.
+    # PostToolUse fires after every tool call, so very often. As a rule the
+    # session is not waiting then, and there is nothing to do - get out right
+    # away, without the mutex and without a request to the stack light.
     if ($Event -eq 'ToolDone') {
         $hook = Read-HookInput
         $sid  = Resolve-SessionId -HookInput $hook
         if ((Get-SessionState -Id $sid) -notin @('waiting', 'asking')) { exit 0 }
     }
 
-    # Alle Schreibzugriffe und HTTP-Aufrufe serialisieren: mehrere Sessions
-    # koennen gleichzeitig feuern, und zwei parallele Laeufe wuerden sich
-    # ueberholen - dann kaeme womoeglich der aeltere Stand zuletzt an.
-    $mutex    = New-Object System.Threading.Mutex($false, 'Global\ClaudeStacklight')
-    $gehalten = $false
-    try { $gehalten = $mutex.WaitOne(3000) } catch [System.Threading.AbandonedMutexException] { $gehalten = $true }
+    # Serialise all writes and HTTP calls: several sessions can fire at the
+    # same time, and two parallel runs would overtake each other - the older
+    # state might then arrive last.
+    $mutex = New-Object System.Threading.Mutex($false, 'Global\ClaudeStacklight')
+    $held  = $false
+    try { $held = $mutex.WaitOne(3000) } catch [System.Threading.AbandonedMutexException] { $held = $true }
 
     if ($Event -ne 'ToolDone') {
         $hook = Read-HookInput
@@ -398,23 +401,23 @@ try {
     }
 
     switch ($Event) {
-        # 'idle', nicht 'done': eine frisch geoeffnete Session ist bereit,
-        # aber nichts ist fertig geworden - sonst gruent die Saeule beim
-        # blossen Oeffnen eines Terminals.
+        # 'idle', not 'done': a freshly opened session is ready, but nothing
+        # has finished - otherwise the stack light would turn green just from
+        # opening a terminal.
         'SessionStart'     { Set-SessionState -Id $sid -State 'idle'    -ErrorFlag $false }
-        # Ein neuer Prompt quittiert einen alten Fehler - sonst bliebe Rot ewig.
+        # A new prompt acknowledges an old error - otherwise red would stay forever.
         'UserPromptSubmit' { Set-SessionState -Id $sid -State 'working' -ErrorFlag $false }
-        # Unterschieden wird ueber getrennte Hook-Eintraege in settings.json
-        # (Matcher auf den Notification-Typ bzw. den Werkzeugnamen), nicht ueber
-        # Felder der Hook-Eingabe - deren Aufbau ist fuer Notification nicht
-        # dokumentiert.
-        'Freigabe'         { Set-SessionState -Id $sid -State 'waiting' }
-        'Rueckfrage'       { Set-SessionState -Id $sid -State 'asking' }
-        # Das Werkzeug ist gelaufen (freigegeben bzw. Frage beantwortet) -
-        # Claude arbeitet weiter.
+        # The distinction comes from separate hook entries in settings.json
+        # (matchers on the notification type or the tool name), not from
+        # fields of the hook input - their structure is not documented for
+        # Notification.
+        'Approval'         { Set-SessionState -Id $sid -State 'waiting' }
+        'Question'         { Set-SessionState -Id $sid -State 'asking' }
+        # The tool has run (approved, or question answered) - Claude keeps
+        # working.
         'ToolDone'         { Set-SessionState -Id $sid -State 'working' }
-        'Stop'             { Set-SessionState -Id $sid -State 'done';   Start-FertigTimer }
-        'StopFailure'      { Set-SessionState -Id $sid -State 'done'    -ErrorFlag $true; Start-FertigTimer }
+        'Stop'             { Set-SessionState -Id $sid -State 'done';   Start-DoneTimer }
+        'StopFailure'      { Set-SessionState -Id $sid -State 'done'    -ErrorFlag $true; Start-DoneTimer }
         'ToolFailure'      { Set-SessionState -Id $sid -ErrorFlag $true }
         'SessionEnd'       { Remove-SessionState -Id $sid }
         'AllOff'           { Get-ChildItem $StateDir -Filter '*.json' -File -EA SilentlyContinue |
@@ -423,92 +426,90 @@ try {
 
     switch ($Event) {
         'Status' {
-            $lage = Get-Hauptzustand
-            $ziel = Get-Lampen
+            $situation = Get-MainState
+            $target    = Get-Lamps
 
-            'Zustand : {0}{1}' -f $(if ($lage.Haupt) { $lage.Haupt } else { 'keine Session offen' }),
-                                  $(if ($lage.Fehler) { ' + Fehler' } else { '' }) | Write-Output
-            'Saeule  : {0}' -f $BaseUrl | Write-Output
+            'State   : {0}{1}' -f $(if ($situation.Main) { $situation.Main } else { 'no session open' }),
+                                  $(if ($situation.Error) { ' + error' } else { '' }) | Write-Output
+            'Light   : {0}' -f $BaseUrl | Write-Output
             '' | Write-Output
 
-            foreach ($name in $LAMPEN) {
-                $l = $ziel[$name]
+            foreach ($name in $LAMPS) {
+                $l = $target[$name]
                 if ($l.on) {
-                    $wie = switch ($l.effect) {
-                        'blink' { 'blinkt {0:0.#} Hz, {1} % Tastgrad' -f $l.frequency, $l.duty }
-                        'pulse' { 'pulsiert {0:0.#} Hz'                -f $l.frequency }
-                        default { 'dauerhaft' }
+                    $how = switch ($l.effect) {
+                        'blink' { 'blinking {0:0.#} Hz, {1} % duty' -f $l.frequency, $l.duty }
+                        'pulse' { 'pulsing {0:0.#} Hz'              -f $l.frequency }
+                        default { 'steady' }
                     }
-                    '{0,-7} AN  {1,3} %  {2}' -f $name, $l.brightness, $wie | Write-Output
+                    '{0,-7} ON  {1,3} %  {2}' -f $name, $l.brightness, $how | Write-Output
                 } else {
                     '{0,-7} --' -f $name | Write-Output
                 }
             }
 
-            # Ehrlich bleiben: gruen faellt nur dank des Nachzueglers von
-            # selbst auf weiss. Laeuft keiner (Rechner war im Ruhezustand,
-            # Prozess abgeschossen), wechselt es erst beim naechsten Ereignis.
-            if ($lage.Haupt -eq 'fertig') {
-                $laeuft = $false
+            # Be honest: green only falls back to white by itself thanks to
+            # the straggler. If none is running (computer was asleep, process
+            # killed), it only changes on the next event.
+            if ($situation.Main -eq 'done') {
+                $running = $false
                 try {
                     $t = Get-Content (Join-Path $StateDir '_timer.json') -Raw | ConvertFrom-Json
-                    $laeuft = (Get-Process -Id $t.pid -EA Stop).StartTime.ToUniversalTime().Ticks -eq [int64] $t.start
+                    $running = (Get-Process -Id $t.pid -EA Stop).StartTime.ToUniversalTime().Ticks -eq [int64] $t.start
                 } catch { }
                 '' | Write-Output
-                if ($laeuft) { 'Hinweis : Nachzuegler laeuft, gruen wechselt von selbst auf weiss.' | Write-Output }
-                else         { 'Hinweis : kein Nachzuegler, gruen wechselt erst beim naechsten Ereignis.' | Write-Output }
+                if ($running) { 'Note    : straggler running, green switches to white by itself.' | Write-Output }
+                else          { 'Note    : no straggler, green only switches on the next event.' | Write-Output }
             }
         }
 
         'SelfTest' {
-            # Den Kanal-Durchlauf macht die Firmware selbst und stellt danach
-            # den vorherigen Zustand wieder her. Solange er laeuft, waere ein
-            # eigener Sollzustand verloren - deshalb abwarten und erst danach
-            # neu setzen.
-            $wartezeit = 6.0
+            # The firmware runs the channel sweep itself and restores the
+            # previous state afterwards. A target state sent while it runs
+            # would be lost - so wait and only set it afterwards.
+            $waitTime = 6.0
             try {
-                $a = Invoke-RestMethod -Uri "$BaseUrl/api/sweep" -TimeoutSec 2 -ErrorAction Stop
-                if ($a.channels -and $a.holdMs) { $wartezeit = ($a.channels * $a.holdMs / 1000.0) + 0.5 }
+                $r = Invoke-RestMethod -Uri "$BaseUrl/api/sweep" -TimeoutSec 2 -ErrorAction Stop
+                if ($r.channels -and $r.holdMs) { $waitTime = ($r.channels * $r.holdMs / 1000.0) + 0.5 }
             } catch {
-                Write-Log "GET /api/sweep fehlgeschlagen: $($_.Exception.Message)"
-                $wartezeit = 0
+                Write-Log "GET /api/sweep failed: $($_.Exception.Message)"
+                $waitTime = 0
             }
-            if ($wartezeit -gt 0) { Start-Sleep -Seconds $wartezeit }
-            Send-Lampen -Ziel (Get-Lampen) | Out-Null
+            if ($waitTime -gt 0) { Start-Sleep -Seconds $waitTime }
+            Send-Lamps -Target (Get-Lamps) | Out-Null
         }
 
-        # Roter Warnblitz bei einem gefaehrlichen Kommando. Schnelles Blinken
-        # statt Dauerlicht, damit er sich vom gerasteten Fehler-Rot
-        # unterscheidet, und ueber den Hauptzustand gelegt statt an seine
-        # Stelle - blau pulsiert waehrenddessen weiter.
+        # Red warning flash for a dangerous command. Fast blinking instead of a
+        # steady light, so it differs from the latched error red, and laid over
+        # the main state instead of replacing it - blue keeps pulsing meanwhile.
         #
-        # "Vorher" ist er nur bedingt: der PreToolUse-Hook feuert zwar vor der
-        # Ausfuehrung, laeuft aber mit async=true, und allein der Start von
-        # pwsh.exe kostet rund 300 ms (gemessen). Der Blitz liegt also faktisch
-        # parallel zum Kommando. Zum rechtzeitigen Hochgucken reicht das nur,
-        # solange noch eine Freigabe aussteht - bei einem bereits freigegebenen
-        # Befehl siehst du ihn, waehrend er schon laeuft.
+        # "Before" is only partly true: the PreToolUse hook does fire before
+        # execution, but runs with async=true, and starting pwsh.exe alone
+        # takes about 300 ms (measured). The flash is therefore effectively in
+        # parallel with the command. That is only early enough to look up
+        # while an approval is still pending - for an already approved command
+        # you see it while it is already running.
         'Danger' {
-            if (-not (Test-Gefaehrlich -HookInput $hook)) { break }
-            $blitz = Get-Lampen
-            $blitz['red'] = New-Lampe -An $true `
-                -Vorgabe @{ effect = 'blink'; brightness = 100; frequency = 6.0; duty = 50 }
-            Send-Lampen -Ziel $blitz | Out-Null
+            if (-not (Test-Dangerous -HookInput $hook)) { break }
+            $flash = Get-Lamps
+            $flash['red'] = New-Lamp -On $true `
+                -Spec @{ effect = 'blink'; brightness = 100; frequency = 6.0; duty = 50 }
+            Send-Lamps -Target $flash | Out-Null
             Start-Sleep -Seconds $FlashSeconds
-            Send-Lampen -Ziel (Get-Lampen) | Out-Null
+            Send-Lamps -Target (Get-Lamps) | Out-Null
         }
 
         default {
-            $ok = Send-Lampen -Ziel (Get-Lampen)
-            if (-not $Quiet) { Write-Verbose ("Lampen gesetzt: " + $ok) }
+            $ok = Send-Lamps -Target (Get-Lamps)
+            if (-not $Quiet) { Write-Verbose ("lamps set: " + $ok) }
         }
     }
 }
 catch {
-    Write-Log "unerwarteter Fehler bei Event=$Event : $_"
+    Write-Log "unexpected error for Event=$Event : $_"
 }
 finally {
-    if ($gehalten -and $mutex) { try { $mutex.ReleaseMutex() } catch { } }
+    if ($held -and $mutex) { try { $mutex.ReleaseMutex() } catch { } }
     if ($mutex) { $mutex.Dispose() }
 }
 
