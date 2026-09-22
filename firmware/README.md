@@ -1,255 +1,257 @@
 # StatusStackLight – Firmware (ESP32-S3)
 
-Firmware für die 5-Lampen-Signalsäule. Sie stellt eine HTTP-JSON-API zur Ansteuerung der
-Lampen bereit und ein Web-Interface, mit dem sich jede Lampe einzeln in allen Parametern
-durchspielen lässt.
+Firmware for the 5-lamp stack light. It provides an HTTP JSON API for driving the lamps and
+a web interface that lets you play through every parameter of each lamp individually.
 
-Gehäuse und Mechanik liegen in [`../enclosure`](../enclosure/OpenSCAD/README.md), die Anzeige
-der Claude-Code-Sessions in [`../claude-code`](../claude-code/README.md). Den Überblick über
-das ganze Projekt gibt die [README im Hauptverzeichnis](../README.md).
+The enclosure and mechanics live in [`../enclosure`](../enclosure/OpenSCAD/README.md), the
+display of Claude Code sessions in [`../claude-code`](../claude-code/README.md). The
+[README in the root directory](../README.md) gives an overview of the whole project.
 
-## Was die Lampen können
+## What the lamps can do
 
-Jede Lampe hat einen Hauptschalter, eine Helligkeit und ein Zeitverhalten:
+Each lamp has a master switch, a brightness and a timing behaviour:
 
-| Feld | Bereich | Bedeutung |
+| Field | Range | Meaning |
 |---|---|---|
-| `on` | `true` / `false` | Hauptschalter |
-| `brightness` | 0…100 % | Spitzenhelligkeit, gammakorrigiert |
-| `effect` | `steady`, `blink`, `pulse` | dauerhaft / hartes Blinken / weiches Pulsieren |
-| `frequency` | 0.1…20.0 Hz | Takt für `blink` und `pulse` |
-| `duty` | 1…99 % | nur `blink`: Anteil der Periode, in dem die Lampe leuchtet |
+| `on` | `true` / `false` | master switch |
+| `brightness` | 0…100 % | peak brightness, gamma corrected |
+| `effect` | `steady`, `blink`, `pulse` | constant / hard blinking / soft pulsing |
+| `frequency` | 0.1…20.0 Hz | rate for `blink` and `pulse` |
+| `duty` | 1…99 % | `blink` only: share of the period during which the lamp is lit |
 
-`on` ist bewusst vom Effekt getrennt. Wer eine blinkende Lampe ausschaltet und wieder
-einschaltet, bekommt sie blinkend zurück – Helligkeit und Effekt überleben das Ausschalten.
+`on` is deliberately separate from the effect. Turn a blinking lamp off and on again and you
+get it back blinking – brightness and effect survive being switched off.
 
-Mehrere Lampen mit derselben Frequenz blinken synchron; die Effekt-Engine benutzt für alle
-fünf eine gemeinsame Zeitbasis.
+Several lamps with the same frequency blink in sync; the effect engine uses a common time
+base for all five.
 
-Wie man diese Felder setzt, steht in [API.md](API.md).
+How to set these fields is described in [API.md](API.md).
 
 ## Hardware
 
-| Punkt | Wert |
+| Item | Value |
 |---|---|
-| Board | ESP32-S3 DevKitC-1, **N16R8** (16 MB Flash, 8 MB Octal-PSRAM) |
-| Treiber | 8-Kanal-MOSFET-Modul, low-side, **LOW-aktiv** (GPIO auf Masse = Lampe an) |
-| Leuchtmittel | 12-V-LED-Module |
-| Versorgung | USB-C-PD-Triggerboard (12 V) → Mini560-Buck → 3,3 V an den 3V3-Pin des ESP32 |
+| Board | ESP32-S3 DevKitC-1, **N16R8** (16 MB flash, 8 MB octal PSRAM) |
+| Driver | 8-channel MOSFET module, low side, **active LOW** (GPIO to ground = lamp on) |
+| Lamps | 12 V LED modules |
+| Power | USB-C PD trigger board (12 V) → Mini560 buck → 3.3 V into the ESP32's 3V3 pin |
 
-### Kanalbelegung
+### Channel mapping
 
-| Kanal | GPIO | Farbe | API-ID |
+| Channel | GPIO | Colour | API ID |
 |---|---|---|---|
-| 1 | 4 | weiß | `white` |
-| 2 | 5 | blau | `blue` |
-| 3 | 6 | grün | `green` |
+| 1 | 4 | white | `white` |
+| 2 | 5 | blue | `blue` |
+| 3 | 6 | green | `green` |
 | 4 | 7 | orange | `orange` |
-| 5 | 15 | rot | `red` |
+| 5 | 15 | red | `red` |
 
-Diese Zuordnung ist am 21.09.2026 gegen die aufgebaute Säule geprüft und stimmt.
+This mapping was verified against the assembled stack light on 2026-09-21.
 
-Wird umverdrahtet oder eine Lampe getauscht, lässt sie sich mit dem
-[Kanal-Durchlauf](#diagnose) erneut kontrollieren. Stimmt sie nicht mehr, werden in
-`include/config.h` die Zeilen der Tabelle `LAMPEN[]` getauscht – sonst nichts.
+After rewiring or replacing a lamp, it can be checked again with the
+[channel sweep](#diagnostics). If it no longer matches, swap the lines of the `LAMPS[]`
+table in `include/config.h` – nothing else.
 
-## WLAN einrichten
+## WiFi setup
 
-Zugangsdaten stehen im NVS, nicht im Quelltext. Findet das Gerät dort keine – frisch
-geflasht, auf einem anderen Board oder nach `POST /api/reset` –, spannt es selbst einen
-offenen Accesspoint auf:
+Credentials are stored in NVS, not in the source. If the device finds none there – freshly
+flashed, on a different board or after `POST /api/reset` – it opens an open access point
+itself:
 
-1. Accesspoint **`StatusStackLight-XXXX`** erscheint in der WLAN-Liste (`XXXX` = die letzten
-   beiden Bytes der MAC-Adresse, steht auch auf der seriellen Konsole).
-2. Verbinden – die Konfigurationsseite öffnet sich als Captive Portal von selbst. Falls
-   nicht: `http://192.168.4.1/setup`.
-3. Netz auswählen, Passwort eingeben, speichern. Das Gerät **probiert die Daten erst aus**
-   und speichert sie nur, wenn die Verbindung zustande kommt – ein Tippfehler sperrt dich
-   also nicht aus. Deshalb dauert die Antwort bis zu 20 Sekunden.
-4. Danach ist es unter **`http://statusstacklight.local/`** erreichbar (bzw. unter der IP,
-   die die Konfigurationsseite meldet – Android löst `.local` nicht zuverlässig auf).
+1. The access point **`StatusStackLight-XXXX`** appears in the WiFi list (`XXXX` = the last
+   two bytes of the MAC address, also printed on the serial console).
+2. Connect – the setup page opens by itself as a captive portal. If not:
+   `http://192.168.4.1/setup`.
+3. Choose a network, enter the password, save. The device **tries the credentials first**
+   and only stores them if the connection succeeds – a typo does not lock you out. That is
+   why the response takes up to 20 seconds.
+4. After that it is reachable at **`http://statusstacklight.local/`** (or at the IP the
+   setup page reports – Android does not resolve `.local` reliably).
 
-Reißt die Verbindung im Betrieb ab, versucht das Gerät es selbstständig weiter; die Lampen
-zeigen dabei unverändert den letzten Zustand. Bleibt es länger als zwei Minuten erfolglos,
-geht der Konfig-AP wieder auf. Die API ist dann über die AP-Adresse erreichbar, Änderungen
-an den Lampen werden gespeichert, aber erst nach der nächsten Verbindung angezeigt – bis
-dahin pulsiert Orange (siehe unten).
+If the connection drops during operation, the device keeps retrying on its own; the lamps
+keep showing their last state meanwhile. If it stays unsuccessful for more than two minutes,
+the setup AP opens again. The API is then reachable at the AP address; changes to the lamps
+are stored but only shown after the next connection – until then, orange pulses (see
+below).
 
-### Startanzeige
+### Boot display
 
-Beim Einstecken zeigt die Säule, wie weit sie ist, statt sofort den gespeicherten
-Lampenzustand:
+When plugged in, the stack light shows how far along it is instead of showing the stored
+lamp state right away:
 
-| Anzeige | Bedeutung |
+| Display | Meaning |
 |---|---|
-| blau pulsiert (1 Hz) | verbindet sich mit dem gespeicherten WLAN |
-| grün leuchtet eine Sekunde, dann kurz dunkel | verbunden – danach erscheint der gespeicherte Lampenzustand |
-| orange pulsiert langsam | Konfig-AP offen: kein WLAN gespeichert oder keins erreichbar |
+| blue pulsing (1 Hz) | connecting to the stored WiFi network |
+| green lit for one second, then briefly dark | connected – then the stored lamp state appears |
+| orange pulsing slowly | setup AP open: no WiFi stored or none reachable |
 
-Orange bleibt, bis über den Konfig-AP ein WLAN eingetragen ist; während des
-Verbindungsversuchs pulsiert wieder Blau, bei Erfolg folgt das grüne Signal. Blau pulsiert
-bewusst schneller als „Claude arbeitet“ (0,3 Hz). Bricht die Verbindung im laufenden Betrieb
-nur kurz ab, erscheint keine Anzeige – der Claude-Status bleibt stehen. Takt, Blitzdauer und
-Helligkeit stehen in `config.h` unter `ANZEIGE_*`.
+Orange stays until a WiFi network has been entered via the setup AP; during the connection
+attempt blue pulses again, and on success the green signal follows. Blue deliberately pulses
+faster than "Claude is working" (0.3 Hz). If the connection only drops briefly during
+operation, no display appears – the Claude status stays visible. Rate, flash duration and
+brightness are set in `config.h` under `DISPLAY_*`.
 
-## Diagnose
+## Diagnostics
 
-Im Web-Interface unten: **Kanal-Durchlauf**. Er schaltet die Kanäle 1 bis 5 nacheinander für
-je eine Sekunde einzeln ein und meldet dabei auf der seriellen Konsole, welche Farbe erwartet
-wird – der schnellste Weg, nach einem Lampenwechsel oder bei Verdacht auf einen
-Wackelkontakt jeden Kanal einzeln zu sehen:
+At the bottom of the web interface: **Channel sweep**. It turns channels 1 to 5 on one at a
+time for one second each and reports on the serial console which colour is expected – the
+quickest way to see each channel on its own after replacing a lamp or when a loose contact
+is suspected:
 
 ```
-[durchlauf] Kanal 1  GPIO  4  erwartet: weiß
-[durchlauf] Kanal 2  GPIO  5  erwartet: blau
+[sweep] channel 1  GPIO  4  expected: white
+[sweep] channel 2  GPIO  5  expected: blue
 ...
 ```
 
-Danach wird der vorherige Zustand wiederhergestellt. Auch per API: `GET /api/sweep`.
+Afterwards the previous state is restored. Also available via the API: `GET /api/sweep`.
 
-Wenn ein Kanal auffällig ist:
+If a channel misbehaves:
 
-- **Bleibt eine Lampe dunkel, die anderen gehen** – der Fehler sitzt hinter dem GPIO. Zum
-  Eingrenzen am MOSFET-Ausgang messen, während der Durchlauf auf diesem Kanal steht.
-- **Leuchtet die falsche Lampe** – die Zeilen in `LAMPEN[]` in `include/config.h` tauschen.
-- **Blitzt die Säule beim Booten kurz auf** – dem MOSFET-Modul fehlen die Pullups an den
-  Steuereingängen; je 10 kΩ nach 3,3 V nachrüsten. Die Firmware legt die GPIOs zwar als
-  allererstes auf den Aus-Pegel, kann aber die Zeit bis dahin nicht überbrücken.
-- **Schaltet alles genau verkehrt herum** – `LAMPE_LOW_AKTIV = false` in `config.h`.
+- **One lamp stays dark while the others work** – the fault is behind the GPIO. To narrow it
+  down, measure at the MOSFET output while the sweep is on that channel.
+- **The wrong lamp lights up** – swap the lines in `LAMPS[]` in `include/config.h`.
+- **The stack light flashes briefly while booting** – the MOSFET module lacks pull-ups on its
+  control inputs; add 10 kΩ to 3.3 V on each. The firmware drives the GPIOs to the off level
+  first thing, but cannot bridge the time before that.
+- **Everything switches exactly the wrong way round** – `LAMP_ACTIVE_LOW = false` in
+  `config.h`.
 
 ## API
 
-Die vollständige Beschreibung aller Endpunkte mit Anfragen, echten Antworten, Fehlercodes
-und Beispielen in curl und PowerShell steht in **[API.md](API.md)**.
+The complete description of all endpoints with requests, real responses, error codes and
+examples in curl and PowerShell is in **[API.md](API.md)**.
 
-Kurz zum Einstieg:
+A quick start:
 
 ```bash
-curl http://statusstacklight.local/api/status                     # alles auf einen Blick
-curl 'http://statusstacklight.local/api/lamps/red/on?brightness=50' # rot einschalten
+curl http://statusstacklight.local/api/status                     # everything at a glance
+curl 'http://statusstacklight.local/api/lamps/red/on?brightness=50' # turn red on
 curl -X PATCH http://statusstacklight.local/api/lamps/orange \
      -H 'Content-Type: application/json' -d '{"effect":"blink","frequency":2}'
 ```
 
-Ungültige Werte werden mit `400` und einer Klartext-Meldung abgelehnt statt still
-zurechtgebogen – eine stillschweigend halbierte Helligkeit sucht man bei der Fehlersuche
-sonst an der falschen Stelle.
+Invalid values are rejected with `400` and a plain-text message instead of being silently
+clamped – a silently halved brightness sends you looking in the wrong place when debugging.
 
-## Bauen und flashen
+## Building and flashing
 
 ```powershell
-pio run                 # bauen
-pio run -t upload       # bauen und flashen
-pio device monitor      # serielle Konsole, 115200 Baud
+pio run                 # build
+pio run -t upload       # build and flash
+pio device monitor      # serial console, 115200 baud
 ```
 
-Zwei Umgebungen, je nach benutzter USB-C-Buchse am DevKitC-1 (auf dem Gehäusedeckel als
-`USB` und `COM` beschriftet):
+Two environments, depending on which USB-C port of the DevKitC-1 you use (labelled `USB` and
+`COM` on the enclosure lid):
 
-| Umgebung | Buchse | |
+| Environment | Port | |
 |---|---|---|
-| `uart` (Standard) | **COM** | Empfohlen. Der Port bleibt über Reset und Flashen hinweg bestehen, und man sieht zusätzlich die Ausgabe des ROM-Bootloaders. |
-| `usb` | **USB** | Native USB-Buchse. Funktioniert, aber der COM-Port verschwindet bei jedem Reset. |
+| `uart` (default) | **COM** | Recommended. The port survives reset and flashing, and you also see the output of the ROM bootloader. |
+| `usb` | **USB** | Native USB port. Works, but the COM port disappears on every reset. |
 
 ```powershell
 pio run -e usb -t upload
 ```
 
-Der erste Build lädt Plattform und Xtensa-Toolchain nach – das dauert und braucht Internet.
+The first build downloads the platform and the Xtensa toolchain – that takes a while and
+needs internet access.
 
-**Versorgung beim Flashen:** Der Mini560 speist 3,3 V direkt in den 3V3-Pin, am
-Spannungsregler des Boards vorbei. Steckt zusätzlich USB, arbeiten zwei Quellen auf dieselbe
-Leitung – Espressif nennt die beiden Versorgungswege ausdrücklich „mutually exclusive“. Für
-einen kurzen Flashvorgang geht das in der Praxis meist gut; sauber ist, die 3,3-V-Leitung
-vorher zu trennen (Masse darf bleiben). Das Board ist ein Nachbau mit CH343 statt CP2102N,
-Schutzdioden an den USB-Buchsen sind also nicht gesichert.
+**Power while flashing:** The Mini560 feeds 3.3 V directly into the 3V3 pin, bypassing the
+board's voltage regulator. If USB is plugged in as well, two sources drive the same rail –
+Espressif explicitly calls the two supply paths "mutually exclusive". For a short flash this
+usually works in practice; the clean way is to disconnect the 3.3 V line first (ground may
+stay). The board is a clone with a CH343 instead of a CP2102N, so protection diodes on the
+USB ports are not guaranteed.
 
-### Zwei Dinge, die hier absichtlich so stehen
+### Two things that are this way on purpose
 
-**`build_dir` zeigt aus dem Projekt heraus** (`C:/pio/StatusStackLight`). Zum einen enthält
-der Projektpfad einen Umlaut (`Signalsäule`), und Nicht-ASCII in Pfaden ist von PlatformIO
-ausdrücklich nicht unterstützt. Zum anderen sind `.pio/build` rund zehntausend Dateien – in
-einem Dropbox-Ordner heißt das Dauersynchronisation und gelegentlich eine gesperrte Datei
-mitten im Build.
+**`build_dir` points outside the project** (`C:/pio/StatusStackLight`). For one, non-ASCII
+characters in paths are explicitly unsupported by PlatformIO, and a build directory outside
+the project keeps that independent of where the project lives. For another, `.pio/build` is
+around ten thousand files – in a Dropbox folder that means constant syncing and now and then
+a locked file in the middle of a build.
 
-**`board_build.arduino.memory_type = qio_opi`** passt zum ESP32-S3-**WROOM-1** N16R8 (Quad-Flash,
-Octal-PSRAM). Das ähnlich heißende WROOM-**2** N16R8**V** hat Octal-Flash mit 1,8 V und bräuchte
-`opi_opi` plus `flash_mode = dout` – damit startet das Board sonst gar nicht erst. Im Zweifel
-den Aufdruck auf dem Modul lesen. Die Startmeldung gibt die PSRAM-Größe aus; stehen dort
-statt rund 8 MB null Bytes, stimmt die Einstellung nicht.
+**`board_build.arduino.memory_type = qio_opi`** matches the ESP32-S3-**WROOM-1** N16R8 (quad
+flash, octal PSRAM). The similarly named WROOM-**2** N16R8**V** has 1.8 V octal flash and
+would need `opi_opi` plus `flash_mode = dout` – otherwise the board does not even boot. When
+in doubt, read the marking on the module. The startup banner prints the PSRAM size; if it
+shows zero bytes instead of about 8 MB, the setting is wrong.
 
-### Wenn der Build abbricht
+### If the build fails
 
-**`ModuleNotFoundError: No module named 'intelhex'`** beim Erzeugen von `bootloader.bin`:
-Das mitgelieferte esptool 4.9 braucht dieses Python-Paket, PlatformIOs eigene Umgebung bringt
-es aber nicht mit. Einmalig nachinstallieren:
+**`ModuleNotFoundError: No module named 'intelhex'`** while creating `bootloader.bin`: the
+bundled esptool 4.9 needs this Python package, but PlatformIO's own environment does not
+include it. Install it once:
 
 ```powershell
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m pip install intelhex
 ```
 
-**Merkwürdige Fehler beim Öffnen von Dateien**: zuerst den Umlaut im Projektpfad verdächtigen
-(siehe `build_dir` oben), bevor man im Quelltext sucht.
+**Strange errors when opening files**: first suspect non-ASCII characters in the path (see
+`build_dir` above) before searching the source.
 
-## Aufbau
+## Structure
 
 ```
-API.md                  HTTP-API: alle Endpunkte mit Beispielen
-platformio.ini          Board, Umgebungen, Bibliotheken
-include/config.h        Pins, Farben, Grenzwerte, Standardwerte  <- hier wird geschraubt
-scripts/embed_web.py    Pre-Build: web/*.html -> include/web_assets.h (gzip)
-web/index.html          Steuerseite (Quelle)
-web/setup.html          WLAN-Konfigurationsseite (Quelle)
+API.md                  HTTP API: all endpoints with examples
+platformio.ini          board, environments, libraries
+include/config.h        pins, colours, limits, defaults  <- adjust things here
+scripts/embed_web.py    pre-build: web/*.html -> include/web_assets.h (gzip)
+web/index.html          control page (source)
+web/setup.html          WiFi setup page (source)
 src/main.cpp            setup/loop
-src/lampen.*            LEDC, Effekt-Engine, Gamma, Invertierung
-src/lampenzustand.*     Zustand einer Lampe, Prüfung, JSON
-src/lampenspeicher.*    letzter Lampenzustand im NVS, übersteht Neustarts
-src/wlan_portal.*       Zugangsdaten, STA-Verbindung, Konfig-AP, Captive Portal
-src/api_server.*        HTTP-Routen
+src/lamps.*             LEDC, effect engine, gamma, inversion, boot display
+src/lamp_state.*        state of a lamp, validation, JSON
+src/lamp_store.*        last lamp state in NVS, survives restarts
+src/wifi_portal.*       credentials, station connection, setup AP, captive portal
+src/api_server.*        HTTP routes
 ```
 
-Das Web-Interface wird beim Build gzippt und als Bytefeld ins Firmware-Image eingebettet.
-Die HTML-Dateien bleiben dadurch normale, editierbare Dateien, und trotzdem genügt ein
-einziger Upload-Schritt – kein separates Flashen eines Dateisystems, das man nach einem OTA
-garantiert vergisst. `include/web_assets.h` ist generiert und steht in `.gitignore`.
+The web interface is gzipped during the build and embedded into the firmware image as a byte
+array. The HTML files thus remain normal, editable files, while a single upload step is
+still enough – no separate flashing of a file system that you are guaranteed to forget after
+an OTA. `include/web_assets.h` is generated and listed in `.gitignore`.
 
-### Warum die Effekte in einem eigenen Task laufen
+### Why the effects run in their own task
 
-Die LEDC-Grundfrequenz bleibt konstant bei 1 kHz; die Effekte modulieren nur das
-Tastverhältnis. Das erledigt ein FreeRTOS-Task mit 100 Hz auf **Core 0**, während der
-Webserver im Arduino-Loop auf Core 1 läuft. Diese Trennung ist der Grund, warum der
-synchrone `WebServer` aus dem Arduino-Core genügt: selbst ein hängender HTTP-Client kann das
-Blinken nicht ins Stocken bringen. Dadurch spart sich das Projekt die Abhängigkeit auf
-ESPAsyncWebServer und AsyncTCP samt deren Versionsfallen.
+The LEDC base frequency stays constant at 1 kHz; the effects only modulate the duty cycle.
+That is handled by a FreeRTOS task at 100 Hz on **core 0**, while the web server runs in the
+Arduino loop on core 1. This separation is why the synchronous `WebServer` from the Arduino
+core is good enough: not even a hanging HTTP client can make the blinking stutter. This
+spares the project a dependency on ESPAsyncWebServer and AsyncTCP along with their version
+traps.
 
-### Zustand über Neustarts hinweg
+### State across restarts
 
-Die Firmware merkt sich den Zustand aller fünf Lampen im NVS (Bereich `ssl-lampen`, getrennt
-von den WLAN-Daten – `/api/reset` lässt ihn stehen) und stellt ihn beim Start wieder her,
-noch bevor der Effekt-Task anläuft. Ohne das stünde die Säule nach Stromausfall, Neustart
-oder Flashen dunkel, bis der nächste Hook zufällig den Sollzustand schickt – und wartet
-Claude gerade auf Eingabe, feuert keiner.
+The firmware remembers the state of all five lamps in NVS (namespace `ssl-lampen`, separate
+from the WiFi credentials – `/api/reset` leaves it alone) and restores it at startup, before
+the effect task starts. Without that, the stack light would stay dark after a power cut,
+restart or flash until the next hook happens to send the target state – and if Claude is
+waiting for input, none fires.
 
-Geschrieben wird nur bei einer echten Änderung und erst nach 2 s Ruhe
-(`SPEICHER_VERZOEGERUNG_MS`). Das Hook-Skript schickt bei jedem Ereignis den kompletten
-Zustand, meist unverändert – das löst keinen Schreibvorgang aus. Ein gezogener Regler im
-Web-Interface ergibt einen statt zwanzig, und der Warnblitz ist vorbei, bevor er im Flash
-landet.
+It only writes on a real change and only after 2 s of quiet (`STORE_DELAY_MS`). The hook
+script sends the complete state on every event, mostly unchanged – that does not trigger a
+write. A slider dragged in the web interface results in one write instead of twenty, and the
+warning flash is over before it reaches the flash.
 
-Der wiederhergestellte Zustand kann veraltet sein – etwa blau pulsierend von einer Session,
-die während des Stromausfalls zu Ende ging. Der nächste Hook korrigiert das.
+The restored state may be outdated – say, blue pulsing from a session that ended during the
+power cut. The next hook corrects that.
 
-### PWM-Grundfrequenz
+The NVS namespaces (`ssl-lampen`, `ssl-wlan`) and keys keep their original German names, so
+devices keep their stored state and credentials across firmware updates.
 
-Fest auf **1 kHz** (`PWM_GRUNDFREQUENZ` in `config.h`), nicht zur Laufzeit änderbar. Nach oben
-wäre ohnehin wenig Luft: das MOSFET-Modul schafft rund 2 kHz, weil seine Gates über einen
-10-kΩ-Pulldown entladen werden und der Abschaltvorgang dadurch träge ist. Der ESP32 wäre
-nicht die Grenze – sein LEDC-Block käme bei 12 Bit bis 19,5 kHz.
+### PWM base frequency
 
-Nicht zu verwechseln mit dem `frequency`-Feld einer Lampe: das ist der Blink- bzw.
-Pulsiertakt (0.1–20 Hz) und hat mit der PWM-Trägerfrequenz nichts zu tun.
+Fixed at **1 kHz** (`PWM_BASE_FREQUENCY` in `config.h`), not changeable at runtime. There is
+little headroom anyway: the MOSFET module manages about 2 kHz because its gates are
+discharged through a 10 kΩ pull-down, which makes turn-off sluggish. The ESP32 would not be
+the limit – its LEDC block would reach 19.5 kHz at 12 bits.
 
-## Anzeige der Claude-Code-Sessions
+Not to be confused with a lamp's `frequency` field: that is the blink or pulse rate
+(0.1–20 Hz) and has nothing to do with the PWM carrier frequency.
 
-Die Säule zeigt über Hooks den Zustand laufender Claude-Code-Sessions an. Skript, Hook-
-Konfiguration und Anzeigeschema liegen in [`../claude-code`](../claude-code/README.md).
+## Displaying Claude Code sessions
+
+Through hooks, the stack light shows the state of running Claude Code sessions. The script,
+hook configuration and display scheme are in [`../claude-code`](../claude-code/README.md).

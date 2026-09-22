@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>StatusStackLight &ndash; WLAN einrichten</title>
+<title>StatusStackLight &ndash; WiFi setup</title>
 <style>
 :root {
-  --bg:    #0f1115;
-  --karte: #191d24;
-  --rand:  #2a313c;
-  --text:  #e6e9ee;
-  --grau:  #8d97a6;
-  --akzent:#4f9cf9;
+  --bg:     #0f1115;
+  --card:   #191d24;
+  --border: #2a313c;
+  --text:   #e6e9ee;
+  --muted:  #8d97a6;
+  --accent: #4f9cf9;
 }
 * { box-sizing: border-box; }
 body {
@@ -19,143 +19,143 @@ body {
   background: var(--bg); color: var(--text);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-.huelle { max-width: 440px; margin: 0 auto; }
+.wrap { max-width: 440px; margin: 0 auto; }
 h1 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
-.unter { color: var(--grau); font-size: 13px; margin-bottom: 18px; }
+.sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 
-.karte {
-  background: var(--karte); border: 1px solid var(--rand);
+.card {
+  background: var(--card); border: 1px solid var(--border);
   border-radius: 12px; padding: 16px; margin-bottom: 12px;
 }
-label { display: block; color: var(--grau); font-size: 13px; margin-bottom: 5px; }
+label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 5px; }
 input {
   width: 100%; background: #11151b; color: var(--text);
-  border: 1px solid var(--rand); border-radius: 8px;
+  border: 1px solid var(--border); border-radius: 8px;
   padding: 10px; font: inherit; margin-bottom: 14px;
 }
-input:focus { outline: none; border-color: var(--akzent); }
+input:focus { outline: none; border-color: var(--accent); }
 button {
-  width: 100%; background: var(--akzent); color: #06101f; font-weight: 600;
+  width: 100%; background: var(--accent); color: #06101f; font-weight: 600;
   border: none; border-radius: 8px; padding: 12px; font: inherit;
   font-weight: 600; cursor: pointer;
 }
 button:disabled { opacity: .55; cursor: default; }
 
-h2 { font-size: 14px; color: var(--grau); margin: 0 0 10px; font-weight: 600; }
-.netz {
+h2 { font-size: 14px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.network {
   display: flex; align-items: baseline; gap: 8px;
-  padding: 9px 4px; border-bottom: 1px solid var(--rand); cursor: pointer;
+  padding: 9px 4px; border-bottom: 1px solid var(--border); cursor: pointer;
 }
-.netz:last-child { border-bottom: none; }
-.netz:hover .ssid { color: var(--akzent); }
+.network:last-child { border-bottom: none; }
+.network:hover .ssid { color: var(--accent); }
 .ssid { flex: 1; }
-.db { color: var(--grau); font-size: 12px; font-variant-numeric: tabular-nums; }
+.db { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
-.meldung { border-radius: 8px; padding: 11px 13px; font-size: 14px; margin-bottom: 12px; }
-.meldung.gut     { background: #10291a; border: 1px solid #1f7a45; }
-.meldung.schlecht{ background: #2b1416; border: 1px solid #a33; }
-.meldung.warte   { background: #1a2030; border: 1px solid #39496b; }
-a { color: var(--akzent); }
+.message { border-radius: 8px; padding: 11px 13px; font-size: 14px; margin-bottom: 12px; }
+.message.good { background: #10291a; border: 1px solid #1f7a45; }
+.message.bad  { background: #2b1416; border: 1px solid #a33; }
+.message.wait { background: #1a2030; border: 1px solid #39496b; }
+a { color: var(--accent); }
 </style>
 </head>
 <body>
-<div class="huelle">
+<div class="wrap">
 
-<h1>WLAN einrichten</h1>
-<div class="unter" id="unter">StatusStackLight</div>
+<h1>WiFi setup</h1>
+<div class="sub" id="sub">StatusStackLight</div>
 
-<div id="meldung"></div>
+<div id="message"></div>
 
-<div class="karte">
-  <form id="formular">
-    <label for="ssid">Netzwerkname (SSID)</label>
+<div class="card">
+  <form id="form">
+    <label for="ssid">Network name (SSID)</label>
     <input id="ssid" name="ssid" autocomplete="off" autocapitalize="none" spellcheck="false" required>
 
-    <label for="passwort">Passwort</label>
-    <input id="passwort" name="passwort" type="password" autocomplete="off">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="off">
 
-    <button id="senden" type="submit">Verbinden und speichern</button>
+    <button id="submit" type="submit">Connect and save</button>
   </form>
 </div>
 
-<div class="karte">
-  <h2>Gefundene Netze</h2>
-  <div id="netze">wird gesucht ...</div>
+<div class="card">
+  <h2>Networks found</h2>
+  <div id="networks">searching ...</div>
 </div>
 
-<p class="unter"><a href="/">Zurück zur Steuerung</a></p>
+<p class="sub"><a href="/">Back to the controls</a></p>
 
 </div>
 <script>
 "use strict";
 
-function meldung(art, text) {
-  document.getElementById("meldung").innerHTML =
-    '<div class="meldung ' + art + '">' + text + "</div>";
+function message(kind, text) {
+  document.getElementById("message").innerHTML =
+    '<div class="message ' + kind + '">' + text + "</div>";
 }
 
-fetch("/api/config").then(a => a.json()).then(c => {
-  document.getElementById("unter").textContent =
-    c.mode === "ap" ? "Konfigurations-Accesspoint " + c.apName
-                    : "verbunden mit " + c.ssid;
+fetch("/api/config").then(r => r.json()).then(c => {
+  document.getElementById("sub").textContent =
+    c.mode === "ap" ? "Setup access point " + c.apName
+                    : "connected to " + c.ssid;
   if (c.ssid) document.getElementById("ssid").value = c.ssid;
 }).catch(() => {});
 
-fetch("/api/scan").then(a => a.json()).then(d => {
-  const ziel = document.getElementById("netze");
-  if (!d.networks.length) { ziel.textContent = "keine Netze gefunden"; return; }
+fetch("/api/scan").then(r => r.json()).then(d => {
+  const target = document.getElementById("networks");
+  if (!d.networks.length) { target.textContent = "no networks found"; return; }
 
-  // Stärkstes zuerst, Doppelte (mehrere Accesspoints, gleiche SSID) raus.
-  const gesehen = new Set();
-  ziel.innerHTML = "";
+  // Strongest first, duplicates (several access points, same SSID) removed.
+  const seen = new Set();
+  target.innerHTML = "";
   d.networks.sort((a, b) => b.rssi - a.rssi).forEach(n => {
-    if (!n.ssid || gesehen.has(n.ssid)) return;
-    gesehen.add(n.ssid);
-    const zeile = document.createElement("div");
-    zeile.className = "netz";
-    zeile.innerHTML = '<span class="ssid"></span><span class="db">' +
-                      n.rssi + " dBm" + (n.encrypted ? " &middot; gesichert" : "") + "</span>";
-    zeile.querySelector(".ssid").textContent = n.ssid;
-    zeile.onclick = () => {
+    if (!n.ssid || seen.has(n.ssid)) return;
+    seen.add(n.ssid);
+    const row = document.createElement("div");
+    row.className = "network";
+    row.innerHTML = '<span class="ssid"></span><span class="db">' +
+                    n.rssi + " dBm" + (n.encrypted ? " &middot; secured" : "") + "</span>";
+    row.querySelector(".ssid").textContent = n.ssid;
+    row.onclick = () => {
       document.getElementById("ssid").value = n.ssid;
-      document.getElementById("passwort").focus();
+      document.getElementById("password").focus();
     };
-    ziel.appendChild(zeile);
+    target.appendChild(row);
   });
-}).catch(() => { document.getElementById("netze").textContent = "Suche fehlgeschlagen"; });
+}).catch(() => { document.getElementById("networks").textContent = "scan failed"; });
 
-document.getElementById("formular").onsubmit = ev => {
+document.getElementById("form").onsubmit = ev => {
   ev.preventDefault();
-  const knopf = document.getElementById("senden");
-  knopf.disabled = true;
+  const button = document.getElementById("submit");
+  button.disabled = true;
 
-  // Das Gerät probiert die Daten erst aus und speichert nur bei Erfolg.
-  // Deshalb dauert die Antwort bis zu 20 Sekunden - und deshalb steht hier ein
-  // Hinweis statt eines stumm wartenden Knopfes.
-  meldung("warte", "Verbindung wird getestet, das kann bis zu 20 Sekunden dauern ...");
+  // The device tries the credentials first and only stores them on success.
+  // That is why the response takes up to 20 seconds - and why there is a
+  // notice here instead of a silently waiting button.
+  message("wait", "Testing the connection, this can take up to 20 seconds ...");
 
   fetch("/api/config/wifi", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ssid: document.getElementById("ssid").value,
-      password: document.getElementById("passwort").value
+      password: document.getElementById("password").value
     })
-  }).then(a => a.json().then(j => {
-    knopf.disabled = false;
-    if (!a.ok) { meldung("schlecht", j.error || "Fehler " + a.status); return; }
-    meldung("gut",
-      "Verbunden. Das Gerät ist jetzt unter <b>http://" + j.ip + "/</b> " +
-      "beziehungsweise <b>http://statusstacklight.local/</b> erreichbar. " +
-      "Diesen Accesspoint kannst du verlassen.");
+  }).then(r => r.json().then(j => {
+    button.disabled = false;
+    if (!r.ok) { message("bad", j.error || "Error " + r.status); return; }
+    message("good",
+      "Connected. The device is now reachable at <b>http://" + j.ip + "/</b> " +
+      "or <b>http://statusstacklight.local/</b>. " +
+      "You can leave this access point.");
   })).catch(() => {
-    // Erwartbar: sobald die Verbindung steht, bricht der Accesspoint weg und
-    // die laufende Anfrage stirbt. Das ist kein Fehler, sondern der Erfolgsfall.
-    knopf.disabled = false;
-    meldung("gut",
-      "Die Verbindung zum Accesspoint ist abgebrochen - das passiert genau dann, " +
-      "wenn das Gerät ins WLAN gewechselt ist. Versuche es unter " +
-      "<b>http://statusstacklight.local/</b> oder schau im Router nach.");
+    // Expected: as soon as the connection is up, the access point goes away
+    // and the pending request dies. That is not an error but the success case.
+    button.disabled = false;
+    message("good",
+      "The connection to the access point dropped - that happens exactly when " +
+      "the device has switched to the WiFi network. Try " +
+      "<b>http://statusstacklight.local/</b> or check your router.");
   });
 };
 </script>

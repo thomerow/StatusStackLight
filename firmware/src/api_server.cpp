@@ -5,18 +5,18 @@
 #include <WiFi.h>
 
 #include "config.h"
-#include "lampen.h"
-#include "lampenzustand.h"
+#include "lamp_state.h"
+#include "lamps.h"
 #include "web_assets.h"
-#include "wlan_portal.h"
+#include "wifi_portal.h"
 
 namespace {
 
 WebServer server(80);
 
-// --- Antworten -------------------------------------------------------------
+// --- Responses -------------------------------------------------------------
 
-void sendeJson(int code, const JsonDocument &doc)
+void sendJson(int code, const JsonDocument &doc)
 {
     String text;
     serializeJson(doc, text);
@@ -24,48 +24,48 @@ void sendeJson(int code, const JsonDocument &doc)
     server.send(code, "application/json", text);
 }
 
-void sendeFehler(int code, const String &meldung)
+void sendError(int code, const String &message)
 {
     JsonDocument doc;
-    doc["error"] = meldung;
-    sendeJson(code, doc);
+    doc["error"] = message;
+    sendJson(code, doc);
 }
 
-void sendeUnbekannteLampe(const String &bezeichner)
+void sendUnknownLamp(const String &identifier)
 {
     JsonDocument doc;
-    doc["error"] = "unknown lamp: " + bezeichner;
-    JsonArray liste = doc["lamps"].to<JsonArray>();
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        liste.add(LAMPEN[i].id);
+    doc["error"] = "unknown lamp: " + identifier;
+    JsonArray list = doc["lamps"].to<JsonArray>();
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        list.add(LAMPS[i].id);
     }
-    sendeJson(404, doc);
+    sendJson(404, doc);
 }
 
-void sendeLampe(uint8_t index)
+void sendLamp(uint8_t index)
 {
     JsonDocument doc;
     JsonObject   o = doc.to<JsonObject>();
-    schreibeJson(Lampen::zustand(index), index, o);
-    sendeJson(200, doc);
+    writeJson(Lamps::state(index), index, o);
+    sendJson(200, doc);
 }
 
-void fuelleLampen(JsonArray ziel)
+void fillLamps(JsonArray target)
 {
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        JsonObject o = ziel.add<JsonObject>();
-        schreibeJson(Lampen::zustand(i), i, o);
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        JsonObject o = target.add<JsonObject>();
+        writeJson(Lamps::state(i), i, o);
     }
 }
 
-void sendeAlleLampen()
+void sendAllLamps()
 {
     JsonDocument doc;
-    fuelleLampen(doc["lamps"].to<JsonArray>());
-    sendeJson(200, doc);
+    fillLamps(doc["lamps"].to<JsonArray>());
+    sendJson(200, doc);
 }
 
-void sendeSeite(const uint8_t *daten, size_t laenge, const char *etag)
+void sendPage(const uint8_t *data, size_t length, const char *etag)
 {
     if (server.header("If-None-Match") == etag) {
         server.send(304);
@@ -74,32 +74,32 @@ void sendeSeite(const uint8_t *daten, size_t laenge, const char *etag)
     server.sendHeader("Content-Encoding", "gzip");
     server.sendHeader("ETag", etag);
     server.sendHeader("Cache-Control", "no-cache");
-    server.send_P(200, "text/html", (PGM_P) daten, laenge);
+    server.send_P(200, "text/html", (PGM_P) data, length);
 }
 
-// --- JSON aus dem Rumpf lesen ----------------------------------------------
+// --- Reading JSON from the body --------------------------------------------
 
-bool leseRumpf(JsonDocument &doc)
+bool readBody(JsonDocument &doc)
 {
-    const String rumpf = server.arg("plain");
-    if (rumpf.isEmpty()) {
-        sendeFehler(400, "request body is empty");
+    const String body = server.arg("plain");
+    if (body.isEmpty()) {
+        sendError(400, "request body is empty");
         return false;
     }
 
-    const DeserializationError fehler = deserializeJson(doc, rumpf);
-    if (fehler) {
-        sendeFehler(400, String("invalid json: ") + fehler.c_str());
+    const DeserializationError error = deserializeJson(doc, body);
+    if (error) {
+        sendError(400, String("invalid json: ") + error.c_str());
         return false;
     }
     if (!doc.is<JsonObject>()) {
-        sendeFehler(400, "request body must be a json object");
+        sendError(400, "request body must be a json object");
         return false;
     }
     return true;
 }
 
-// --- feste Routen ----------------------------------------------------------
+// --- Fixed routes ----------------------------------------------------------
 
 void handleStatus()
 {
@@ -111,179 +111,179 @@ void handleStatus()
     doc["heap"]     = ESP.getFreeHeap();
     doc["psram"]    = ESP.getPsramSize();
 
-    JsonObject wlan = doc["wifi"].to<JsonObject>();
-    wlan["mode"]      = Wlan::imApModus() ? "ap" : "sta";
-    wlan["ssid"]      = Wlan::imApModus() ? Wlan::apName() : Wlan::ssid();
-    wlan["ip"]        = Wlan::ip().toString();
-    wlan["rssi"]      = Wlan::rssi();
-    wlan["connected"] = Wlan::verbunden();
-    wlan["hostname"]  = String(SSL_HOSTNAME) + ".local";
+    JsonObject wifi = doc["wifi"].to<JsonObject>();
+    wifi["mode"]      = Network::inApMode() ? "ap" : "sta";
+    wifi["ssid"]      = Network::inApMode() ? Network::apName() : Network::ssid();
+    wifi["ip"]        = Network::ip().toString();
+    wifi["rssi"]      = Network::rssi();
+    wifi["connected"] = Network::connected();
+    wifi["hostname"]  = String(SSL_HOSTNAME) + ".local";
 
     JsonObject pwm = doc["pwm"].to<JsonObject>();
-    pwm["baseFrequency"] = PWM_GRUNDFREQUENZ;
-    pwm["resolution"]    = PWM_AUFLOESUNG_BIT;
-    pwm["activeLow"]     = LAMPE_LOW_AKTIV;
+    pwm["baseFrequency"] = PWM_BASE_FREQUENCY;
+    pwm["resolution"]    = PWM_RESOLUTION_BITS;
+    pwm["activeLow"]     = LAMP_ACTIVE_LOW;
 
     JsonObject sweep = doc["sweep"].to<JsonObject>();
-    sweep["running"] = Lampen::durchlaufLaeuft();
-    sweep["channel"] = Lampen::durchlaufKanal();
+    sweep["running"] = Lamps::sweepRunning();
+    sweep["channel"] = Lamps::sweepChannel();
 
-    // Solange die Startanzeige laeuft, zeigen die Lampen nicht den Zustand
-    // aus /api/lamps - hier steht, warum.
-    doc["display"] = Lampen::systemanzeigeName(Lampen::systemanzeige());
+    // While the boot display is running, the lamps do not show the state from
+    // /api/lamps - this field says why.
+    doc["display"] = Lamps::systemDisplayName(Lamps::systemDisplay());
 
-    // Anzeigereihenfolge der Saeule von oben nach unten - das Web-Interface
-    // soll die Reihenfolge nicht selbst kennen muessen.
-    JsonArray reihenfolge = doc["order"].to<JsonArray>();
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        reihenfolge.add(LAMPEN[LAMPEN_UI_REIHENFOLGE[i]].id);
+    // Display order of the stack light from top to bottom - the web interface
+    // should not have to know the order itself.
+    JsonArray order = doc["order"].to<JsonArray>();
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        order.add(LAMPS[LAMP_UI_ORDER[i]].id);
     }
 
-    fuelleLampen(doc["lamps"].to<JsonArray>());
-    sendeJson(200, doc);
+    fillLamps(doc["lamps"].to<JsonArray>());
+    sendJson(200, doc);
 }
 
-// POST /api/lamps - mehrere Lampen in einem Zug.
+// POST /api/lamps - several lamps in one go.
 //
-// Erst alle Aenderungen pruefen, dann alle uebernehmen: sonst stuenden bei
-// einem Tippfehler im dritten Eintrag die ersten beiden schon auf neuen Werten.
-void handleLampenSammel()
+// Validate all changes first, then apply them all: otherwise a typo in the
+// third entry would leave the first two already set to new values.
+void handleLampsBatch()
 {
     JsonDocument doc;
-    if (!leseRumpf(doc)) return;
+    if (!readBody(doc)) return;
 
-    Lampenzustand neu[LAMPEN_ANZAHL];
-    bool          betroffen[LAMPEN_ANZAHL] = { false };
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        neu[i] = Lampen::zustand(i);
+    LampState next[LAMP_COUNT];
+    bool      affected[LAMP_COUNT] = { false };
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        next[i] = Lamps::state(i);
     }
 
-    for (JsonPairConst eintrag : doc.as<JsonObjectConst>()) {
-        const String bezeichner = eintrag.key().c_str();
-        const int    index      = Lampen::findeIndex(bezeichner);
+    for (JsonPairConst entry : doc.as<JsonObjectConst>()) {
+        const String identifier = entry.key().c_str();
+        const int    index      = Lamps::findIndex(identifier);
         if (index < 0) {
-            sendeUnbekannteLampe(bezeichner);
+            sendUnknownLamp(identifier);
             return;
         }
-        if (!eintrag.value().is<JsonObjectConst>()) {
-            sendeFehler(400, "value for " + bezeichner + " must be an object");
+        if (!entry.value().is<JsonObjectConst>()) {
+            sendError(400, "value for " + identifier + " must be an object");
             return;
         }
 
-        const Pruefergebnis e = uebernimmJson(neu[index], eintrag.value().as<JsonObjectConst>(), false);
-        if (!e.ok) {
-            sendeFehler(400, "lamp " + bezeichner + ": " + e.fehler);
+        const ValidationResult r = applyJson(next[index], entry.value().as<JsonObjectConst>(), false);
+        if (!r.ok) {
+            sendError(400, "lamp " + identifier + ": " + r.error);
             return;
         }
-        betroffen[index] = true;
+        affected[index] = true;
     }
 
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        if (betroffen[i]) Lampen::setzeZustand(i, neu[i]);
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        if (affected[i]) Lamps::setState(i, next[i]);
     }
-    sendeAlleLampen();
+    sendAllLamps();
 }
 
-// POST /api/lamps/all - dieselbe Teilaenderung auf alle fuenf.
-void handleLampenAlle()
+// POST /api/lamps/all - the same partial change applied to all five.
+void handleLampsAll()
 {
     JsonDocument doc;
-    if (!leseRumpf(doc)) return;
+    if (!readBody(doc)) return;
 
-    Lampenzustand neu[LAMPEN_ANZAHL];
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        neu[i] = Lampen::zustand(i);
-        const Pruefergebnis e = uebernimmJson(neu[i], doc.as<JsonObjectConst>(), false);
-        if (!e.ok) {
-            sendeFehler(400, e.fehler);
+    LampState next[LAMP_COUNT];
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        next[i] = Lamps::state(i);
+        const ValidationResult r = applyJson(next[i], doc.as<JsonObjectConst>(), false);
+        if (!r.ok) {
+            sendError(400, r.error);
             return;
         }
     }
 
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        Lampen::setzeZustand(i, neu[i]);
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        Lamps::setState(i, next[i]);
     }
-    sendeAlleLampen();
+    sendAllLamps();
 }
 
-void handleAllesAus()
+void handleAllOff()
 {
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        Lampenzustand z = Lampen::zustand(i);
-        z.an = false;
-        Lampen::setzeZustand(i, z);
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        LampState s = Lamps::state(i);
+        s.on = false;
+        Lamps::setState(i, s);
     }
-    sendeAlleLampen();
+    sendAllLamps();
 }
 
 void handleScan()
 {
     JsonDocument doc;
-    JsonArray    netze = doc["networks"].to<JsonArray>();
+    JsonArray    networks = doc["networks"].to<JsonArray>();
 
-    const int anzahl = WiFi.scanNetworks();
-    for (int i = 0; i < anzahl; i++) {
-        JsonObject n = netze.add<JsonObject>();
+    const int count = WiFi.scanNetworks();
+    for (int i = 0; i < count; i++) {
+        JsonObject n = networks.add<JsonObject>();
         n["ssid"]      = WiFi.SSID(i);
         n["rssi"]      = WiFi.RSSI(i);
         n["encrypted"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
     }
     WiFi.scanDelete();
 
-    sendeJson(200, doc);
+    sendJson(200, doc);
 }
 
 void handleConfig()
 {
     JsonDocument doc;
     doc["hostname"]      = SSL_HOSTNAME;
-    doc["mode"]          = Wlan::imApModus() ? "ap" : "sta";
-    doc["ssid"]          = Wlan::ssid();
-    doc["apName"]        = Wlan::apName();
-    doc["baseFrequency"] = PWM_GRUNDFREQUENZ;
-    sendeJson(200, doc);
+    doc["mode"]          = Network::inApMode() ? "ap" : "sta";
+    doc["ssid"]          = Network::ssid();
+    doc["apName"]        = Network::apName();
+    doc["baseFrequency"] = PWM_BASE_FREQUENCY;
+    sendJson(200, doc);
 }
 
-void handleConfigWlan()
+void handleConfigWifi()
 {
     JsonDocument doc;
-    if (!leseRumpf(doc)) return;
+    if (!readBody(doc)) return;
 
-    const String neueSsid = doc["ssid"] | "";
-    const String passwort = doc["password"] | "";
+    const String newSsid  = doc["ssid"] | "";
+    const String password = doc["password"] | "";
 
-    String fehler;
-    if (!Wlan::speichereZugang(neueSsid, passwort, fehler)) {
-        sendeFehler(400, fehler);
+    String error;
+    if (!Network::saveCredentials(newSsid, password, error)) {
+        sendError(400, error);
         return;
     }
 
-    JsonDocument antwort;
-    antwort["ok"]   = true;
-    antwort["ssid"] = neueSsid;
-    antwort["ip"]   = Wlan::ip().toString();
-    sendeJson(200, antwort);
+    JsonDocument response;
+    response["ok"]   = true;
+    response["ssid"] = newSsid;
+    response["ip"]   = Network::ip().toString();
+    sendJson(200, response);
 }
 
 void handleSweep()
 {
-    Lampen::starteDurchlauf();
+    Lamps::startSweep();
 
     JsonDocument doc;
     doc["ok"]       = true;
-    doc["holdMs"]   = DURCHLAUF_MS;
-    doc["channels"] = LAMPEN_ANZAHL;
-    sendeJson(200, doc);
+    doc["holdMs"]   = SWEEP_HOLD_MS;
+    doc["channels"] = LAMP_COUNT;
+    sendJson(200, doc);
 }
 
 void handleReset()
 {
-    Wlan::loescheZugang();
+    Network::clearCredentials();
 
     JsonDocument doc;
     doc["ok"]      = true;
     doc["message"] = "wifi credentials cleared, rebooting";
-    sendeJson(200, doc);
+    sendJson(200, doc);
 
     delay(250);
     ESP.restart();
@@ -293,95 +293,95 @@ void handleReboot()
 {
     JsonDocument doc;
     doc["ok"] = true;
-    sendeJson(200, doc);
+    sendJson(200, doc);
 
     delay(250);
     ESP.restart();
 }
 
-// --- dynamische Routen -----------------------------------------------------
+// --- Dynamic routes --------------------------------------------------------
 
-// /api/lamps/<bezeichner>            GET, PATCH, PUT
-// /api/lamps/<bezeichner>/<aktion>   GET   (on, off, toggle)
-bool behandleLampenPfad(const String &uri)
+// /api/lamps/<identifier>            GET, PATCH, PUT
+// /api/lamps/<identifier>/<action>   GET   (on, off, toggle)
+bool handleLampPath(const String &uri)
 {
     const String rest = uri.substring(strlen("/api/lamps/"));
     if (rest.isEmpty()) {
         return false;
     }
 
-    const int    schraegstrich = rest.indexOf('/');
-    const String bezeichner    = schraegstrich < 0 ? rest : rest.substring(0, schraegstrich);
-    const String aktion        = schraegstrich < 0 ? String() : rest.substring(schraegstrich + 1);
+    const int    slash      = rest.indexOf('/');
+    const String identifier = slash < 0 ? rest : rest.substring(0, slash);
+    const String action     = slash < 0 ? String() : rest.substring(slash + 1);
 
-    const int index = Lampen::findeIndex(bezeichner);
+    const int index = Lamps::findIndex(identifier);
     if (index < 0) {
-        sendeUnbekannteLampe(bezeichner);
+        sendUnknownLamp(identifier);
         return true;
     }
 
-    Lampenzustand zustand = Lampen::zustand(index);
+    LampState state = Lamps::state(index);
 
-    // Kurzbefehl: /api/lamps/red/on?brightness=50&effect=blink
-    if (!aktion.isEmpty()) {
+    // Shortcut: /api/lamps/red/on?brightness=50&effect=blink
+    if (!action.isEmpty()) {
         if (server.method() != HTTP_GET) {
-            sendeFehler(405, "shortcut " + aktion + " is GET only");
+            sendError(405, "shortcut " + action + " is GET only");
             return true;
         }
 
-        if (aktion == "on") {
-            zustand.an = true;
-        } else if (aktion == "off") {
-            zustand.an = false;
-        } else if (aktion == "toggle") {
-            zustand.an = !zustand.an;
+        if (action == "on") {
+            state.on = true;
+        } else if (action == "off") {
+            state.on = false;
+        } else if (action == "toggle") {
+            state.on = !state.on;
         } else {
-            sendeFehler(404, "unknown action: " + aktion + " (on, off, toggle)");
+            sendError(404, "unknown action: " + action + " (on, off, toggle)");
             return true;
         }
 
-        // Weitere Parameter duerfen mitkommen und werden nach dem Schalten
-        // angewandt - /api/lamps/red/on?brightness=20 ist damit ein Aufruf.
-        const Pruefergebnis e = uebernimmQuery(zustand, server);
-        if (!e.ok) {
-            sendeFehler(400, e.fehler);
+        // Further parameters may come along and are applied after switching -
+        // /api/lamps/red/on?brightness=20 is a single call.
+        const ValidationResult r = applyQuery(state, server);
+        if (!r.ok) {
+            sendError(400, r.error);
             return true;
         }
 
-        Lampen::setzeZustand(index, zustand);
-        sendeLampe(index);
+        Lamps::setState(index, state);
+        sendLamp(index);
         return true;
     }
 
     switch (server.method()) {
         case HTTP_GET:
-            sendeLampe(index);
+            sendLamp(index);
             return true;
 
         case HTTP_PATCH:
         case HTTP_PUT: {
             JsonDocument doc;
-            if (!leseRumpf(doc)) return true;
+            if (!readBody(doc)) return true;
 
-            const bool          vollstaendig = server.method() == HTTP_PUT;
-            const Pruefergebnis e = uebernimmJson(zustand, doc.as<JsonObjectConst>(), vollstaendig);
-            if (!e.ok) {
-                sendeFehler(400, e.fehler);
+            const bool             complete = server.method() == HTTP_PUT;
+            const ValidationResult r        = applyJson(state, doc.as<JsonObjectConst>(), complete);
+            if (!r.ok) {
+                sendError(400, r.error);
                 return true;
             }
 
-            Lampen::setzeZustand(index, zustand);
-            sendeLampe(index);
+            Lamps::setState(index, state);
+            sendLamp(index);
             return true;
         }
 
         default:
-            sendeFehler(405, "method not allowed (GET, PATCH, PUT)");
+            sendError(405, "method not allowed (GET, PATCH, PUT)");
             return true;
     }
 }
 
-void handleNichtGefunden()
+void handleNotFound()
 {
     const String uri = server.uri();
 
@@ -393,23 +393,23 @@ void handleNichtGefunden()
         return;
     }
 
-    if (uri.startsWith("/api/lamps/") && behandleLampenPfad(uri)) {
+    if (uri.startsWith("/api/lamps/") && handleLampPath(uri)) {
         return;
     }
 
     if (uri.startsWith("/api/")) {
-        sendeFehler(404, "unknown endpoint: " + uri);
+        sendError(404, "unknown endpoint: " + uri);
         return;
     }
 
-    // Captive Portal: im AP-Modus wird jede sonstige Anfrage auf die
-    // Konfigurationsseite umgeleitet. Die Erkennungsadressen der
-    // Betriebssysteme (/generate_204, /hotspot-detect.html, /connecttest.txt,
-    // /ncsi.txt, /canonical.html) laufen ebenfalls hier durch. Wichtig ist, sie
-    // NICHT mit 204 oder "Success" zu beantworten - sonst haelt das System die
-    // Verbindung fuer voll funktionsfaehig und zeigt gar kein Portal an.
-    if (Wlan::imApModus()) {
-        server.sendHeader("Location", "http://" + Wlan::ip().toString() + "/setup", true);
+    // Captive portal: in AP mode, every other request is redirected to the
+    // setup page. The connectivity check URLs of the operating systems
+    // (/generate_204, /hotspot-detect.html, /connecttest.txt, /ncsi.txt,
+    // /canonical.html) also end up here. It is important NOT to answer them
+    // with 204 or "Success" - otherwise the system considers the connection
+    // fully working and shows no portal at all.
+    if (Network::inApMode()) {
+        server.sendHeader("Location", "http://" + Network::ip().toString() + "/setup", true);
         server.send(302, "text/plain", "");
         return;
     }
@@ -423,31 +423,31 @@ namespace Api {
 
 void begin()
 {
-    // Damit sendeSeite() den ETag des Browsers auswerten kann. Der WebServer
-    // verwirft alle nicht ausdruecklich angemeldeten Header.
-    static const char *beobachteteHeader[] = { "If-None-Match" };
-    server.collectHeaders(beobachteteHeader, 1);
+    // So that sendPage() can evaluate the browser's ETag. The WebServer drops
+    // all headers that were not explicitly registered.
+    static const char *collectedHeaders[] = { "If-None-Match" };
+    server.collectHeaders(collectedHeaders, 1);
 
-    server.on("/",      HTTP_GET, [] { sendeSeite(INDEX_HTML_GZ, INDEX_HTML_GZ_LEN, INDEX_HTML_ETAG); });
-    server.on("/setup", HTTP_GET, [] { sendeSeite(SETUP_HTML_GZ, SETUP_HTML_GZ_LEN, SETUP_HTML_ETAG); });
+    server.on("/",      HTTP_GET, [] { sendPage(INDEX_HTML_GZ, INDEX_HTML_GZ_LEN, INDEX_HTML_ETAG); });
+    server.on("/setup", HTTP_GET, [] { sendPage(SETUP_HTML_GZ, SETUP_HTML_GZ_LEN, SETUP_HTML_ETAG); });
 
     server.on("/api/status",      HTTP_GET,  handleStatus);
-    server.on("/api/lamps",       HTTP_GET,  sendeAlleLampen);
-    server.on("/api/lamps",       HTTP_POST, handleLampenSammel);
-    server.on("/api/lamps/all",   HTTP_POST, handleLampenAlle);
-    server.on("/api/off",         HTTP_GET,  handleAllesAus);
+    server.on("/api/lamps",       HTTP_GET,  sendAllLamps);
+    server.on("/api/lamps",       HTTP_POST, handleLampsBatch);
+    server.on("/api/lamps/all",   HTTP_POST, handleLampsAll);
+    server.on("/api/off",         HTTP_GET,  handleAllOff);
     server.on("/api/scan",        HTTP_GET,  handleScan);
     server.on("/api/config",      HTTP_GET,  handleConfig);
-    server.on("/api/config/wifi", HTTP_POST, handleConfigWlan);
+    server.on("/api/config/wifi", HTTP_POST, handleConfigWifi);
     server.on("/api/sweep",       HTTP_GET,  handleSweep);
     server.on("/api/sweep",       HTTP_POST, handleSweep);
     server.on("/api/reset",       HTTP_POST, handleReset);
     server.on("/api/reboot",      HTTP_POST, handleReboot);
 
-    server.onNotFound(handleNichtGefunden);
+    server.onNotFound(handleNotFound);
     server.begin();
 
-    Serial.println(F("[api] HTTP-Server laeuft auf Port 80"));
+    Serial.println(F("[api] HTTP server running on port 80"));
 }
 
 void tick()

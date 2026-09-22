@@ -1,43 +1,42 @@
-// StatusStackLight - Firmware fuer die 5-Lampen-Signalsaeule.
+// StatusStackLight - firmware for the 5-lamp stack light.
 //
-// Aufbau:
-//   lampen.*         LEDC-Ansteuerung und Effekt-Engine (eigener Task, Core 0)
-//   lampenzustand.*  Zustand einer Lampe, Pruefung und JSON
-//   lampenspeicher.* letzter Lampenzustand im NVS, ueberlebt Neustarts
-//   wlan_portal.*    Zugangsdaten, STA-Verbindung, Konfig-AP mit Captive Portal
-//   api_server.*     HTTP-Routen und die eingebetteten Web-Seiten
+// Structure:
+//   lamps.*        LEDC drive and effect engine (own task, core 0)
+//   lamp_state.*   state of a lamp, validation and JSON
+//   lamp_store.*   last lamp state in NVS, survives restarts
+//   wifi_portal.*  credentials, station connection, setup AP with captive portal
+//   api_server.*   HTTP routes and the embedded web pages
 //
-// Pinbelegung und alles sonst Einstellbare: include/config.h
+// Pin assignment and everything else that is configurable: include/config.h
 
 #include <Arduino.h>
 
 #include "api_server.h"
 #include "config.h"
-#include "lampen.h"
-#include "lampenspeicher.h"
-#include "wlan_portal.h"
+#include "lamp_store.h"
+#include "lamps.h"
+#include "wifi_portal.h"
 
 namespace {
 
-void zeigeStartmeldung()
+void printBanner()
 {
     Serial.println();
     Serial.println(F("========================================"));
-    Serial.printf( "  %s  Firmware %s\n", SSL_HOSTNAME, SSL_FIRMWARE);
+    Serial.printf( "  %s  firmware %s\n", SSL_HOSTNAME, SSL_FIRMWARE);
     Serial.println(F("========================================"));
-    Serial.printf( "  Chip      : %s, %u MHz, %u Kerne\n",
+    Serial.printf( "  Chip      : %s, %u MHz, %u cores\n",
                    ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getChipCores());
     Serial.printf( "  Flash     : %u MB\n", ESP.getFlashChipSize() / (1024 * 1024));
-    // Zeigt 0, wenn board_build.arduino.memory_type nicht zum Modul passt -
-    // beim N16R8 muessen hier rund 8 MB stehen.
-    Serial.printf( "  PSRAM     : %u Bytes\n", ESP.getPsramSize());
-    Serial.printf( "  PWM       : %u Hz, %u Bit, %s-aktiv\n",
-                   PWM_GRUNDFREQUENZ, PWM_AUFLOESUNG_BIT,
-                   LAMPE_LOW_AKTIV ? "LOW" : "HIGH");
-    Serial.println(F("  Kanaele   :"));
-    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
-        Serial.printf("    %u  GPIO %2u  %-6s (%s)\n",
-                      i + 1, LAMPEN[i].gpio, LAMPEN[i].id, LAMPEN[i].name);
+    // Shows 0 if board_build.arduino.memory_type does not match the module -
+    // with the N16R8 this must be about 8 MB.
+    Serial.printf( "  PSRAM     : %u bytes\n", ESP.getPsramSize());
+    Serial.printf( "  PWM       : %u Hz, %u bits, active %s\n",
+                   PWM_BASE_FREQUENCY, PWM_RESOLUTION_BITS,
+                   LAMP_ACTIVE_LOW ? "LOW" : "HIGH");
+    Serial.println(F("  Channels  :"));
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        Serial.printf("    %u  GPIO %2u  %s\n", i + 1, LAMPS[i].gpio, LAMPS[i].id);
     }
     Serial.println(F("========================================"));
 }
@@ -46,16 +45,16 @@ void zeigeStartmeldung()
 
 void setup()
 {
-    // Als allererstes, noch vor der seriellen Ausgabe: die GPIOs auf den
-    // Aus-Pegel legen. Nach dem Reset sind sie hochohmig, und beim LOW-aktiven
-    // MOSFET-Modul heisst das im Zweifel "an" - die Saeule wuerde bei jedem
-    // Start kurz aufleuchten.
-    Lampen::begin();
+    // First of all, even before serial output: drive the GPIOs to the off
+    // level. After reset they are high-impedance, and with the active-LOW
+    // MOSFET module that may well mean "on" - the stack light would flash
+    // briefly on every start.
+    Lamps::begin();
 
     Serial.begin(115200);
 #if ARDUINO_USB_CDC_ON_BOOT
-    // Native USB-Buchse: der Host muss den Port erst aufzaehlen, vorher geht
-    // jede Ausgabe verloren. Bei der UART-Buchse entfaellt das Warten.
+    // Native USB port: the host has to enumerate the port first, any output
+    // before that is lost. With the UART port there is no need to wait.
     const uint32_t start = millis();
     while (!Serial && millis() - start < 3000) {
         delay(10);
@@ -63,26 +62,26 @@ void setup()
 #endif
     delay(200);
 
-    zeigeStartmeldung();
+    printBanner();
 
-    Lampenspeicher::lade();
-    // Vor dem Effekt-Task, sonst blitzte zwischen seinem Start und
-    // Wlan::begin() kurz der gespeicherte Zustand auf.
-    Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbinden);
-    Lampen::starteEffektTask();
-    Wlan::begin();
+    LampStore::load();
+    // Before the effect task, otherwise the stored state would flash briefly
+    // between its start and Network::begin().
+    Lamps::setSystemDisplay(Lamps::SystemDisplay::Connecting);
+    Lamps::startEffectTask();
+    Network::begin();
     Api::begin();
 
-    Serial.println(F("[start] bereit"));
+    Serial.println(F("[start] ready"));
 }
 
 void loop()
 {
-    Wlan::tick();
+    Network::tick();
     Api::tick();
-    Lampenspeicher::tick();
+    LampStore::tick();
 
-    // Die Lampen haengen nicht an dieser Schleife - sie werden vom Effekt-Task
-    // auf Core 0 bedient. Das kurze Warten gibt nur dem Leerlauf-Task Luft.
+    // The lamps do not depend on this loop - they are driven by the effect
+    // task on core 0. The short wait only gives the idle task some air.
     delay(2);
 }

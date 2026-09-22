@@ -1,10 +1,10 @@
-// api_server.h - HTTP-Schnittstelle: JSON-API, GET-Kurzbefehle und die beiden
-// eingebetteten Web-Seiten.
+// api_server.h - HTTP interface: JSON API, GET shortcuts and the two embedded
+// web pages.
 //
-// Bewusst der synchrone WebServer aus dem Arduino-Core: keine zusaetzliche
-// Abhaengigkeit, keine AsyncTCP-Versionsfallen. Dass das genuegt, liegt an der
-// Effekt-Engine - die laeuft in einem eigenen Task und kann durch einen
-// haengenden HTTP-Client nicht ins Stocken geraten.
+// Deliberately the synchronous WebServer from the Arduino core: no extra
+// dependency, no AsyncTCP version traps. That this is good enough is thanks to
+// the effect engine - it runs in its own task and cannot be stalled by a
+// hanging HTTP client.
 
 #pragma once
 
@@ -13,6 +13,6 @@
 namespace Api {
 
 void begin();
-void tick();   // aus loop() aufrufen
+void tick();   // call from loop()
 
 }   // namespace Api

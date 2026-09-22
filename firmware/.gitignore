@@ -6,6 +6,6 @@
 .clangd
 compile_commands.json
 
-# Beim Build aus web/ erzeugt - gehoert nicht ins Repo, sonst pflegt man
-# denselben Inhalt zweimal und die Fassungen laufen auseinander.
+# Generated from web/ during the build - does not belong in the repo, or the
+# same content is maintained twice and the copies drift apart.
 include/web_assets.h
