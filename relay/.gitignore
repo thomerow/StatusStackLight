@@ -7,7 +7,7 @@ publish/
 TestResults/
 
 # --- Local runtime data (database, data protection keys) ----------------------
-data/
+App_Data/
 *.db
 *.db-shm
 *.db-wal
