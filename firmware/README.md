@@ -24,6 +24,8 @@ einschaltet, bekommt sie blinkend zurück – Helligkeit und Effekt überleben d
 Mehrere Lampen mit derselben Frequenz blinken synchron; die Effekt-Engine benutzt für alle
 fünf eine gemeinsame Zeitbasis.
 
+Wie man diese Felder setzt, steht in [API.md](API.md).
+
 ## Hardware
 
 | Punkt | Wert |
@@ -97,69 +99,21 @@ Wenn ein Kanal auffällig ist:
 
 ## API
 
-Alle Antworten sind JSON und enthalten immer den **resultierenden** Zustand – der Client muss
-nie raten, was angekommen ist.
+Die vollständige Beschreibung aller Endpunkte mit Anfragen, echten Antworten, Fehlercodes
+und Beispielen in curl und PowerShell steht in **[API.md](API.md)**.
 
-### Lesen
-
-```
-GET /api/status          Firmware, Uptime, Heap, WLAN, PWM-Einstellung, alle Lampen
-GET /api/lamps           alle fünf Lampen
-GET /api/lamps/red       eine Lampe
-```
-
-### Schreiben
-
-```
-PATCH /api/lamps/red     nur die gesendeten Felder ändern sich
-PUT   /api/lamps/red     vollständiger Zustand, fehlende Felder auf Standard
-POST  /api/lamps         mehrere Lampen atomar
-POST  /api/lamps/all     dieselbe Teiländerung auf alle fünf
-```
+Kurz zum Einstieg:
 
 ```bash
+curl http://statusstacklight.local/api/status                     # alles auf einen Blick
+curl 'http://statusstacklight.local/api/lamps/red/on?brightness=50' # rot einschalten
 curl -X PATCH http://statusstacklight.local/api/lamps/orange \
-     -H 'Content-Type: application/json' \
-     -d '{"on":true,"effect":"blink","brightness":80,"frequency":2.0,"duty":50}'
-
-curl -X POST http://statusstacklight.local/api/lamps \
-     -H 'Content-Type: application/json' \
-     -d '{"blue":{"on":true,"effect":"pulse"},"green":{"on":false}}'
+     -H 'Content-Type: application/json' -d '{"effect":"blink","frequency":2}'
 ```
 
-Bei `POST /api/lamps` wird erst alles geprüft und dann alles übernommen. Ein Tippfehler im
-dritten Eintrag lässt die ersten beiden also nicht auf halbem Weg stehen.
-
-### Kurzbefehle (GET)
-
-Formal unsauber, praktisch unschlagbar für Skripte und die Browser-Adresszeile:
-
-```
-GET /api/lamps/red/on?brightness=50&effect=blink&frequency=2&duty=30
-GET /api/lamps/red/off
-GET /api/lamps/red/toggle
-GET /api/lamps/3/on             Ansprache per Kanalnummer (3 = grün)
-GET /api/off                    alle aus
-```
-
-### Konfiguration und Wartung
-
-```
-GET  /api/config          Hostname, Modus, SSID, PWM-Grundfrequenz
-POST /api/config/wifi     {"ssid":"...","password":"..."}
-GET  /api/scan            gefundene Netze
-GET  /api/sweep           Kanal-Durchlauf starten
-POST /api/reset           WLAN-Daten löschen und neu starten
-POST /api/reboot
-```
-
-### Fehler
-
-- Unbekannte Lampe → `404` mit der Liste der gültigen IDs.
-- Wert außerhalb des Bereichs → `400` mit Feld, empfangenem Wert und gültigem Bereich.
-  **Kein stilles Zurechtbiegen** – eine stillschweigend halbierte Helligkeit sucht man bei
-  der Fehlersuche sonst an der falschen Stelle.
-- Ungültiges JSON → `400` mit der Meldung des Parsers im Klartext.
+Ungültige Werte werden mit `400` und einer Klartext-Meldung abgelehnt statt still
+zurechtgebogen – eine stillschweigend halbierte Helligkeit sucht man bei der Fehlersuche
+sonst an der falschen Stelle.
 
 ## Bauen und flashen
 
@@ -220,6 +174,7 @@ es aber nicht mit. Einmalig nachinstallieren:
 ## Aufbau
 
 ```
+API.md                  HTTP-API: alle Endpunkte mit Beispielen
 platformio.ini          Board, Umgebungen, Bibliotheken
 include/config.h        Pins, Farben, Grenzwerte, Standardwerte  <- hier wird geschraubt
 scripts/embed_web.py    Pre-Build: web/*.html -> include/web_assets.h (gzip)
