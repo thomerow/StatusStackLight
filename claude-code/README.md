@@ -101,8 +101,14 @@ each other off, and a crashed session is forgotten after an hour without events.
 | `PreToolUse` | `AskUserQuestion` | `Question` |
 | `PreToolUse` | `Bash`, with `if` on dangerous commands | `Danger` |
 | `PostToolUse` | `*` | `ToolDone` |
+| `PostToolUseFailure` | `*` | `ToolFailure` |
 | `Stop` / `StopFailure` | – | `Stop` / `StopFailure` |
 | `SessionEnd` | – | `SessionEnd` |
+
+**Red on a failed tool call** (`PostToolUseFailure`) is worth trying out before you rely on
+it: tool calls fail often in normal work – a search without a match, a test run that is
+supposed to fail – and red then stays until the next prompt. If it lights up so often that
+you stop looking, remove that hook entry; `StopFailure` still reports real errors.
 
 The script still accepts `Freigabe` and `Rueckfrage`, the former German names of `Approval`
 and `Question`, so older hook configurations keep working.
