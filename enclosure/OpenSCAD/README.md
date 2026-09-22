@@ -201,7 +201,7 @@ für alle anderen Platinen aufzugeben.
 
 Beim S3 ist PWM kein Thema mehr: der LEDC-Block hat 16 unabhängige Kanäle mit bis zu
 14 Bit, und **jeder** GPIO kann darauf geroutet werden. Fünf gedimmte Lampen sind damit
-ein Dreizeiler – genau der Grund für den Wechsel.
+ein Dreizeiler.
 
 ### Finger weg von
 
@@ -214,9 +214,9 @@ ein Dreizeiler – genau der Grund für den Wechsel.
 | 43, 44 | UART0, die „COM"-Buchse |
 | 38 (bzw. 48) | Onboard-RGB-LED. DevKitC-1 v1.1 nutzt GPIO38, v1.0 GPIO48; bei Klonen variiert das – im Zweifel beide probieren. |
 
-Die fünf empfohlenen Pins sind beim Boot hochohmig. Hat das MOSFET-Modul keine Pulldowns
-an den Steuereingängen, je 10 kΩ nach Masse nachrüsten, sonst kann es beim Einschalten
-kurz flackern.
+Die fünf empfohlenen Pins sind beim Boot hochohmig. Das MOSFET-Modul schaltet bei LOW
+ein; hat es keine Pullups an den Steuereingängen, je 10 kΩ nach 3,3 V nachrüsten, sonst
+kann es beim Einschalten kurz flackern.
 
 ## Beschriftung der USB-Buchsen
 
