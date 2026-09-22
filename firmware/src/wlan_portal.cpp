@@ -6,6 +6,7 @@
 #include <WiFi.h>
 
 #include "config.h"
+#include "lampen.h"
 
 namespace {
 
@@ -70,6 +71,7 @@ bool verbinde(const String &ssid, const String &passwort, uint32_t timeout)
 void starteAp()
 {
     apModus = true;
+    Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Portal);
 
     WiFi.mode(WIFI_AP);
     const String name = Wlan::apName();
@@ -102,8 +104,10 @@ void begin()
     }
 
     WiFi.mode(WIFI_STA);
+    Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbinden);
     if (verbinde(gespeicherteSsid, gespeichertesPasswort, WLAN_VERBINDE_TIMEOUT)) {
         apModus = false;
+        Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbunden);
         Serial.printf("[wlan] verbunden, IP %s, RSSI %d dBm\n",
                       WiFi.localIP().toString().c_str(), WiFi.RSSI());
         starteMdns();
@@ -176,8 +180,11 @@ bool speichereZugang(const String &neueSsid, const String &passwort, String &feh
 
     // Im AP-Modus parallel als Station verbinden, damit die Konfigurationsseite
     // waehrend des Versuchs erreichbar bleibt und das Ergebnis melden kann.
+    // Die Startanzeige gibt es nur im Konfig-AP: im laufenden Betrieb bleibt
+    // der Claude-Status stehen.
     if (apModus) {
         WiFi.mode(WIFI_AP_STA);
+        Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbinden);
     }
 
     if (!verbinde(neueSsid, passwort, WLAN_VERBINDE_TIMEOUT)) {
@@ -185,6 +192,7 @@ bool speichereZugang(const String &neueSsid, const String &passwort, String &feh
         WiFi.disconnect(false, true);
         if (apModus) {
             WiFi.mode(WIFI_AP);
+            Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Portal);
         } else {
             // Im laufenden Betrieb hat der Versuch die bestehende Verbindung
             // getrennt. Ohne diesen Schritt versuchte tick() per reconnect()
@@ -214,6 +222,7 @@ bool speichereZugang(const String &neueSsid, const String &passwort, String &feh
         dns.stop();
         WiFi.mode(WIFI_STA);
         apModus = false;
+        Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbunden);
     }
     getrenntSeit = 0;
     starteMdns();

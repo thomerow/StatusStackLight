@@ -131,6 +131,7 @@ Lampen.
   },
   "pwm": { "baseFrequency": 1000, "resolution": 12, "activeLow": true },
   "sweep": { "running": false, "channel": 0 },
+  "display": "none",
   "order": ["red", "orange", "green", "blue", "white"],
   "lamps": [ … fünf Lampenobjekte … ]
 }
@@ -146,6 +147,7 @@ Lampen.
 | `wifi.rssi` | Signalstärke in dBm; im Modus `ap` immer 0 |
 | `pwm` | PWM-Trägerfrequenz in Hz, Auflösung in Bit, ob die Ausgänge LOW-aktiv sind |
 | `sweep.channel` | während des Kanal-Durchlaufs der gerade leuchtende Kanal 1…5, sonst 0 |
+| `display` | Startanzeige, die gerade den Lampenzustand überlagert: `connecting` (blau pulsiert), `portal` (orange pulsiert), `connected` (grünes Signal) oder `none`. Solange sie nicht `none` ist, zeigen die Lampen nicht den Zustand aus `lamps` – Änderungen werden trotzdem übernommen und erscheinen danach. |
 | `order` | Reihenfolge der Lampen an der Säule von oben nach unten |
 
 ```bash

@@ -69,10 +69,28 @@ offenen Accesspoint auf:
 4. Danach ist es unter **`http://statusstacklight.local/`** erreichbar (bzw. unter der IP,
    die die Konfigurationsseite meldet – Android löst `.local` nicht zuverlässig auf).
 
-Reißt die Verbindung im Betrieb ab, versucht das Gerät es selbstständig weiter; bleibt es
-länger als zwei Minuten erfolglos, geht der Konfig-AP wieder auf. Die Lampen laufen dabei
-unverändert weiter, und die API ist über die AP-Adresse erreichbar – die Säule lässt sich
-also auch ohne WLAN vollständig bedienen.
+Reißt die Verbindung im Betrieb ab, versucht das Gerät es selbstständig weiter; die Lampen
+zeigen dabei unverändert den letzten Zustand. Bleibt es länger als zwei Minuten erfolglos,
+geht der Konfig-AP wieder auf. Die API ist dann über die AP-Adresse erreichbar, Änderungen
+an den Lampen werden gespeichert, aber erst nach der nächsten Verbindung angezeigt – bis
+dahin pulsiert Orange (siehe unten).
+
+### Startanzeige
+
+Beim Einstecken zeigt die Säule, wie weit sie ist, statt sofort den gespeicherten
+Lampenzustand:
+
+| Anzeige | Bedeutung |
+|---|---|
+| blau pulsiert (1 Hz) | verbindet sich mit dem gespeicherten WLAN |
+| grün leuchtet eine Sekunde, dann kurz dunkel | verbunden – danach erscheint der gespeicherte Lampenzustand |
+| orange pulsiert langsam | Konfig-AP offen: kein WLAN gespeichert oder keins erreichbar |
+
+Orange bleibt, bis über den Konfig-AP ein WLAN eingetragen ist; während des
+Verbindungsversuchs pulsiert wieder Blau, bei Erfolg folgt das grüne Signal. Blau pulsiert
+bewusst schneller als „Claude arbeitet“ (0,3 Hz). Bricht die Verbindung im laufenden Betrieb
+nur kurz ab, erscheint keine Anzeige – der Claude-Status bleibt stehen. Takt, Blitzdauer und
+Helligkeit stehen in `config.h` unter `ANZEIGE_*`.
 
 ## Diagnose
 

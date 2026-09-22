@@ -66,6 +66,9 @@ void setup()
     zeigeStartmeldung();
 
     Lampenspeicher::lade();
+    // Vor dem Effekt-Task, sonst blitzte zwischen seinem Start und
+    // Wlan::begin() kurz der gespeicherte Zustand auf.
+    Lampen::setzeSystemanzeige(Lampen::Systemanzeige::Verbinden);
     Lampen::starteEffektTask();
     Wlan::begin();
     Api::begin();

@@ -122,3 +122,21 @@ static const uint32_t WLAN_VERBINDE_TIMEOUT = 20000;  // ms, danach oeffnet der 
 static const uint32_t WLAN_NEUSTART_NACH    = 120000; // ms ohne Verbindung -> Konfig-AP
 static const uint32_t DURCHLAUF_MS          = 1000;   // Haltezeit je Kanal beim Durchlauftest
 static const uint32_t SPEICHER_VERZOEGERUNG_MS = 2000; // ms Ruhe, bevor der Lampenzustand ins NVS geht
+
+// --- Startanzeige ----------------------------------------------------------
+//
+// Beim Start und im Konfig-AP zeigt die Saeule den WLAN-Zustand statt des
+// gespeicherten Lampenzustands: blau pulsierend = verbindet, gruener Blitz =
+// verbunden, orange langsam pulsierend = Konfig-AP offen.
+//
+// Blau pulsiert bewusst deutlich schneller als "Claude arbeitet" (0,3 Hz im
+// Hook-Skript), damit man die beiden nicht verwechselt.
+
+static const float    ANZEIGE_VERBINDEN_HZ = 1.0f;
+static const float    ANZEIGE_PORTAL_HZ    = 0.3f;
+static const uint32_t ANZEIGE_BLITZ_MS     = 1000;
+// Dunkelpause nach dem Blitz. Ohne sie ginge das Gruen nahtlos in einen
+// gespeicherten gruenen Zustand ("fertig") ueber und waere nicht als eigenes
+// Signal zu erkennen.
+static const uint32_t ANZEIGE_PAUSE_MS     = 400;
+static const uint8_t  ANZEIGE_HELLIGKEIT   = 100;   // %

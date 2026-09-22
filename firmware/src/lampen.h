@@ -39,4 +39,18 @@ void starteDurchlauf();
 bool durchlaufLaeuft();
 int  durchlaufKanal();   // 1...5 waehrend des Durchlaufs, sonst 0
 
+// Systemanzeige: ueberlagert den Lampenzustand, solange sie aktiv ist, ohne
+// ihn zu veraendern. Der gespeicherte Zustand bleibt per API aenderbar und
+// erscheint, sobald die Anzeige endet.
+enum class Systemanzeige : uint8_t {
+    Keine,
+    Verbinden,   // blau pulsierend
+    Portal,      // orange langsam pulsierend
+    Verbunden,   // gruener Blitz, endet danach von selbst
+};
+
+void          setzeSystemanzeige(Systemanzeige a);
+Systemanzeige systemanzeige();
+const char   *systemanzeigeName(Systemanzeige a);   // fuer /api/status
+
 }   // namespace Lampen

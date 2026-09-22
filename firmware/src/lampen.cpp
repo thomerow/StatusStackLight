@@ -15,6 +15,15 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool    durchlaufAngefordert = false;
 volatile int     durchlaufAktuell     = 0;   // 1...5 waehrend des Durchlaufs
 
+volatile Lampen::Systemanzeige anzeige     = Lampen::Systemanzeige::Keine;
+volatile uint32_t              anzeigeSeit = 0;   // millis() beim Setzen
+
+// Lampen der Systemanzeige, in begin() ueber ihre ID aufgeloest - so bleibt
+// die Anzeige richtig, auch wenn LAMPEN[] einmal umsortiert wird.
+int lampeVerbinden = -1;
+int lampeVerbunden = -1;
+int lampePortal    = -1;
+
 void baueGammaTabelle()
 {
     for (int i = 0; i <= HELLIGKEIT_MAX; i++) {
@@ -42,6 +51,14 @@ void schreibePwm(uint8_t index, uint8_t prozent)
     niveau[index] = prozent;
 }
 
+// Kosinus statt Dreieck: das Auge nimmt den weichen Umkehrpunkt als "Atmen"
+// wahr, ein Dreieck wirkt an den Spitzen abgehackt. Beginnt bei phase 0 dunkel.
+uint8_t puls(float phase, uint8_t helligkeit)
+{
+    const float f = 0.5f - 0.5f * cosf(2.0f * PI * phase);
+    return (uint8_t) lroundf(f * (float) helligkeit);
+}
+
 // Berechnet die momentane Helligkeit einer Lampe aus ihrem Zustand.
 // `sekunden` ist eine gemeinsame Zeitbasis fuer alle Lampen - nur dadurch
 // blinken zwei Lampen gleicher Frequenz synchron statt auseinanderzulaufen.
@@ -56,16 +73,58 @@ uint8_t berechneNiveau(const Lampenzustand &z, float sekunden)
             const float phase = fmodf(sekunden * z.frequenz, 1.0f);
             return (phase < (float) z.tastgrad / 100.0f) ? z.helligkeit : 0;
         }
-        case Effekt::Pulsieren: {
-            const float phase = fmodf(sekunden * z.frequenz, 1.0f);
-            // Kosinus statt Dreieck: das Auge nimmt den weichen Umkehrpunkt
-            // als "Atmen" wahr, ein Dreieck wirkt an den Spitzen abgehackt.
-            const float f = 0.5f - 0.5f * cosf(2.0f * PI * phase);
-            return (uint8_t) lroundf(f * (float) z.helligkeit);
-        }
+        case Effekt::Pulsieren:
+            return puls(fmodf(sekunden * z.frequenz, 1.0f), z.helligkeit);
         default:
             return z.helligkeit;
     }
+}
+
+// Schreibt die Systemanzeige statt der Lampenzustaende. Liefert false, wenn
+// keine aktiv ist - dann zeigt der Aufrufer den normalen Zustand.
+bool zeigeSystemanzeige()
+{
+    const Lampen::Systemanzeige a = anzeige;
+    if (a == Lampen::Systemanzeige::Keine) {
+        return false;
+    }
+
+    // Zeit relativ zum Setzen, damit jeder Puls dunkel beginnt statt mitten
+    // in der Kurve.
+    const uint32_t vergangen = millis() - anzeigeSeit;
+    const float    sekunden  = (float) vergangen / 1000.0f;
+
+    int     lampe = -1;
+    uint8_t wert  = 0;
+    switch (a) {
+        case Lampen::Systemanzeige::Verbinden:
+            lampe = lampeVerbinden;
+            wert  = puls(fmodf(sekunden * ANZEIGE_VERBINDEN_HZ, 1.0f), ANZEIGE_HELLIGKEIT);
+            break;
+        case Lampen::Systemanzeige::Portal:
+            lampe = lampePortal;
+            wert  = puls(fmodf(sekunden * ANZEIGE_PORTAL_HZ, 1.0f), ANZEIGE_HELLIGKEIT);
+            break;
+        case Lampen::Systemanzeige::Verbunden:
+            if (vergangen >= ANZEIGE_BLITZ_MS + ANZEIGE_PAUSE_MS) {
+                // Nur beenden, wenn niemand inzwischen eine andere Anzeige
+                // gesetzt hat.
+                if (anzeige == Lampen::Systemanzeige::Verbunden) {
+                    anzeige = Lampen::Systemanzeige::Keine;
+                }
+                return false;
+            }
+            lampe = lampeVerbunden;
+            wert  = vergangen < ANZEIGE_BLITZ_MS ? ANZEIGE_HELLIGKEIT : 0;
+            break;
+        default:
+            break;
+    }
+
+    for (uint8_t i = 0; i < LAMPEN_ANZAHL; i++) {
+        schreibePwm(i, (int) i == lampe ? wert : 0);
+    }
+    return true;
 }
 
 void fuehreDurchlaufAus()
@@ -105,6 +164,11 @@ void effektTask(void *)
             durchlaufAngefordert = false;
             fuehreDurchlaufAus();
             letzter = xTaskGetTickCount();
+        }
+
+        if (zeigeSystemanzeige()) {
+            vTaskDelayUntil(&letzter, takt);
+            continue;
         }
 
         // Gemeinsame Zeitbasis. millis() laeuft nach 49 Tagen ueber; fmodf()
@@ -149,6 +213,10 @@ void begin()
         ledcAttachPin(LAMPEN[i].gpio, i);
         schreibePwm(i, 0);
     }
+
+    lampeVerbinden = findeIndex("blue");
+    lampeVerbunden = findeIndex("green");
+    lampePortal    = findeIndex("orange");
 }
 
 void starteEffektTask()
@@ -211,6 +279,29 @@ bool durchlaufLaeuft()
 int durchlaufKanal()
 {
     return durchlaufAktuell;
+}
+
+void setzeSystemanzeige(Systemanzeige a)
+{
+    // Erst die Zeit, dann die Anzeige: der Effekt-Task liest beides ohne
+    // Sperre und soll nie die neue Anzeige mit der alten Startzeit sehen.
+    anzeigeSeit = millis();
+    anzeige     = a;
+}
+
+Systemanzeige systemanzeige()
+{
+    return anzeige;
+}
+
+const char *systemanzeigeName(Systemanzeige a)
+{
+    switch (a) {
+        case Systemanzeige::Verbinden: return "connecting";
+        case Systemanzeige::Portal:    return "portal";
+        case Systemanzeige::Verbunden: return "connected";
+        default:                       return "none";
+    }
 }
 
 }   // namespace Lampen

@@ -128,6 +128,10 @@ void handleStatus()
     sweep["running"] = Lampen::durchlaufLaeuft();
     sweep["channel"] = Lampen::durchlaufKanal();
 
+    // Solange die Startanzeige laeuft, zeigen die Lampen nicht den Zustand
+    // aus /api/lamps - hier steht, warum.
+    doc["display"] = Lampen::systemanzeigeName(Lampen::systemanzeige());
+
     // Anzeigereihenfolge der Saeule von oben nach unten - das Web-Interface
     // soll die Reihenfolge nicht selbst kennen muessen.
     JsonArray reihenfolge = doc["order"].to<JsonArray>();
