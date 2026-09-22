@@ -24,6 +24,13 @@ void startEffectTask();
 LampState state(uint8_t index);
 void      setState(uint8_t index, const LampState &state);
 
+// Applies several partial lamp states at once, as POST /api/lamps and the
+// relay deliver them: {"red": {...}, "blue": {...}}. Lamps not mentioned stay
+// as they are. Everything is validated first, and all changes land in one
+// step - the effect task never shows a half-applied image. On an unknown lamp,
+// `unknownLamp` (if given) receives its name.
+ValidationResult applyBatch(JsonObjectConst source, String *unknownLamp = nullptr);
+
 // Looks up a lamp by its ID ("red") or its channel number ("5").
 // Returns -1 if there is no such lamp.
 int findIndex(const String &identifier);
@@ -47,9 +54,13 @@ enum class SystemDisplay : uint8_t {
     Connecting,   // blue pulsing
     Portal,       // orange pulsing slowly
     Connected,    // green flash, ends by itself
+    RelayLost,    // red pulsing slowly and dimly - relay mode without contact
 };
 
 void          setSystemDisplay(SystemDisplay d);
+// Ends the display, but only if it is still `expected` - so the relay client
+// cannot switch off the portal display the WiFi code has set in the meantime.
+void          clearSystemDisplay(SystemDisplay expected);
 SystemDisplay systemDisplay();
 const char   *systemDisplayName(SystemDisplay d);   // for /api/status
 

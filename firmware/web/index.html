@@ -87,6 +87,31 @@ footer h2 { font-size: 14px; color: var(--muted); margin: 0 0 10px; font-weight:
 .footer-row select { width: auto; }
 .note { color: var(--muted); font-size: 13px; margin-top: 10px; }
 a { color: var(--accent); }
+
+.banner {
+  border: 1px solid #1e3a8a; background: #0f1a33; color: #bfdbfe;
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px;
+}
+.banner.lost { border-color: #7f1d1d; background: #2a1215; color: #fecaca; }
+.banner b { font-weight: 600; }
+
+details.relay {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; margin-top: 16px;
+}
+details.relay summary { cursor: pointer; font-weight: 600; }
+details.relay summary .state { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+.field { margin-top: 12px; }
+.field label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+.field input[type=text], .field input[type=password] {
+  width: 100%; background: #11151b; color: var(--text); border: 1px solid var(--border);
+  border-radius: 7px; padding: 8px 10px; font: inherit; font-size: 14px;
+}
+.field input:focus { outline: none; border-color: var(--accent); }
+.inline-switch { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.message { font-size: 13px; margin-top: 10px; }
+.message.bad { color: #f87171; }
+.message.ok  { color: #4ade80; }
 </style>
 </head>
 <body>
@@ -102,7 +127,35 @@ a { color: var(--accent); }
   <button id="allOn">All on</button>
 </div>
 
+<div class="banner hidden" id="relayBanner"></div>
+
 <div id="lamps"></div>
+
+<details class="relay" id="relayBox">
+  <summary>Relay <span class="state" id="relayState"></span></summary>
+  <p class="note">
+    In relay mode the stack light fetches its state from a relay server on the internet
+    (<code>relay/</code> in the repository) instead of waiting for hooks on the local
+    network. Create a key with the role <i>lamp</i> in the relay's admin interface.
+    The local controls keep working, but the relay's next change overwrites them.
+  </p>
+  <div class="inline-switch">
+    <label class="switch"><input type="checkbox" id="relayEnabled"><span class="track"></span></label>
+    <span>Relay mode</span>
+  </div>
+  <div class="field">
+    <label for="relayUrl">Relay address</label>
+    <input type="text" id="relayUrl" placeholder="https://relay.example.org" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label for="relayKey">API key</label>
+    <input type="password" id="relayKey" placeholder="ssl_..." autocomplete="off">
+  </div>
+  <div class="footer-row" style="margin-top:12px">
+    <button id="relaySave">Save</button>
+  </div>
+  <div class="message" id="relayMessage"></div>
+</details>
 
 <footer>
   <h2>Diagnostics</h2>
@@ -289,6 +342,64 @@ function drawStatus(s) {
   document.getElementById("sweep").classList.toggle("running", s.sweep.running);
 }
 
+function ago(seconds) {
+  return seconds < 60 ? seconds + " s" : seconds < 3600 ? Math.floor(seconds / 60) + " min"
+       : Math.floor(seconds / 3600) + " h";
+}
+
+function drawRelay(s) {
+  const r = s.relay;
+  const banner = document.getElementById("relayBanner");
+  const state = document.getElementById("relayState");
+  banner.classList.toggle("hidden", !r.enabled);
+  banner.classList.toggle("lost", r.enabled && !r.connected);
+  if (!r.enabled) {
+    state.textContent = "off";
+    return;
+  }
+  if (r.connected) {
+    banner.innerHTML = "<b>Relay mode.</b> The lamps follow the relay – local changes are " +
+                       "overwritten by its next change.";
+    state.textContent = "connected";
+  } else {
+    const since = r.lastContact === null ? "no contact yet" : "last contact " + ago(r.lastContact) + " ago";
+    banner.innerHTML = "<b>Relay mode, no connection</b> – " + since +
+                       (r.lastError ? ": " + r.lastError.replace(/</g, "&lt;") : "") + ".";
+    state.textContent = "no connection";
+  }
+}
+
+function loadRelayConfig() {
+  get("/api/config").then(c => {
+    document.getElementById("relayEnabled").checked = c.relay.enabled;
+    document.getElementById("relayUrl").value = c.relay.url;
+    document.getElementById("relayKey").placeholder = c.relay.keySet ? "unchanged" : "ssl_...";
+  }).catch(showError);
+}
+
+document.getElementById("relaySave").onclick = () => {
+  const msg = document.getElementById("relayMessage");
+  const body = {
+    enabled: document.getElementById("relayEnabled").checked,
+    url: document.getElementById("relayUrl").value.trim()
+  };
+  const key = document.getElementById("relayKey").value.trim();
+  if (key) body.key = key;
+  get("/api/config/relay", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }).then(c => {
+    document.getElementById("relayKey").value = "";
+    document.getElementById("relayKey").placeholder = c.keySet ? "unchanged" : "ssl_...";
+    msg.className = "message ok";
+    msg.textContent = c.enabled ? "Saved – connecting to the relay ..." : "Saved – relay mode is off.";
+  }).catch(e => {
+    msg.className = "message bad";
+    msg.textContent = e.message;
+  });
+};
+
 function sync() {
   get("/api/status").then(s => {
     if (!built) {
@@ -300,6 +411,7 @@ function sync() {
       built = true;
     }
     drawStatus(s);
+    drawRelay(s);
     s.lamps.forEach(drawLamp);
   }).catch(showError);
 }
@@ -325,6 +437,7 @@ document.getElementById("reboot").onclick = () => {
   }
 };
 
+loadRelayConfig();
 sync();
 setInterval(sync, 2000);
 </script>

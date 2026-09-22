@@ -84,12 +84,41 @@ lamp state right away:
 | blue pulsing (1 Hz) | connecting to the stored WiFi network |
 | green lit for one second, then briefly dark | connected – then the stored lamp state appears |
 | orange pulsing slowly | setup AP open: no WiFi stored or none reachable |
+| red pulsing slowly, dim | relay mode: no contact to the relay for a minute, see [Relay mode](#relay-mode) |
 
 Orange stays until a WiFi network has been entered via the setup AP; during the connection
 attempt blue pulses again, and on success the green signal follows. Blue deliberately pulses
 faster than "Claude is working" (0.3 Hz). If the connection only drops briefly during
 operation, no display appears – the Claude status stays visible. Rate, flash duration and
 brightness are set in `config.h` under `DISPLAY_*`.
+
+## Relay mode
+
+Normally the stack light waits on the local network for the hook script to switch it. In
+**relay mode** it fetches its state itself from a [relay server](../relay/README.md) on the
+internet instead – then the computers running Claude Code need not be on the same network,
+and several of them can feed the same stack light.
+
+Set it up at the bottom of the web interface under **Relay**: switch on relay mode, enter the
+relay's address (for example `https://relay.example.org` or `http://192.168.178.10:5080`) and
+a key with the role *lamp* from the relay's admin interface, save. The key is stored in NVS
+(namespace `ssl-relay`) and never shown again; to keep it, leave the field empty.
+
+- **Long polling:** the stack light asks the relay for the current image and names the
+  version it shows. The relay holds the request until something changes, at the latest
+  25 seconds (`RELAY_WAIT_S`). A change thus arrives within a fraction of a second, and while
+  nothing happens there is one request every 25 seconds.
+- **HTTPS** works with certificates from Let's Encrypt: the firmware trusts the roots ISRG
+  Root X1 and X2 (`include/relay_ca.h`). For another CA, add its root certificate there.
+  Without TLS, the key travels over the network in plain text.
+- **The local API stays usable** – handy for trying things out. What is set locally stays
+  until the relay's next change overwrites it. The web interface shows a banner in relay mode.
+- **Without contact to the relay** for more than a minute (`RELAY_LOST_AFTER_MS`), **red
+  pulses slowly and dimly** – the display is out of date, nothing is broken. Retries back off
+  from 2 to 30 seconds; as soon as the relay answers, its image appears. The web interface
+  names the last error (wrong key, address unreachable, …).
+
+Over the API: `POST /api/config/relay`, see [API.md](API.md#post-apiconfigrelay).
 
 ## Diagnostics
 
@@ -201,10 +230,12 @@ scripts/embed_web.py    pre-build: web/*.html -> include/web_assets.h (gzip)
 web/index.html          control page (source)
 web/setup.html          WiFi setup page (source)
 src/main.cpp            setup/loop
-src/lamps.*             LEDC, effect engine, gamma, inversion, boot display
+src/lamps.*             LEDC, effect engine, gamma, inversion, system displays
 src/lamp_state.*        state of a lamp, validation, JSON
 src/lamp_store.*        last lamp state in NVS, survives restarts
 src/wifi_portal.*       credentials, station connection, setup AP, captive portal
+src/relay_client.*      relay mode: long polling in its own task
+include/relay_ca.h      root certificates for HTTPS to the relay
 src/api_server.*        HTTP routes
 ```
 
@@ -239,7 +270,8 @@ The restored state may be outdated – say, blue pulsing from a session that end
 power cut. The next hook corrects that.
 
 The NVS namespaces (`ssl-lampen`, `ssl-wlan`) and keys keep their original German names, so
-devices keep their stored state and credentials across firmware updates.
+devices keep their stored state and credentials across firmware updates. The relay settings
+live in `ssl-relay`.
 
 ### PWM base frequency
 
@@ -254,4 +286,5 @@ Not to be confused with a lamp's `frequency` field: that is the blink or pulse r
 ## Displaying Claude Code sessions
 
 Through hooks, the stack light shows the state of running Claude Code sessions. The script,
-hook configuration and display scheme are in [`../claude-code`](../claude-code/README.md).
+hook configuration and display scheme are in [`../claude-code`](../claude-code/README.md);
+across networks through the relay, see [Relay mode](#relay-mode).

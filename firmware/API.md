@@ -38,6 +38,7 @@ access point it is `http://192.168.4.1/`.
 | GET | [`/api/config`](#get-apiconfig) | – | configuration | hostname, WiFi mode |
 | GET | [`/api/scan`](#get-apiscan) | – | `{networks: [...]}` | WiFi networks in range |
 | POST | [`/api/config/wifi`](#post-apiconfigwifi) | `{ssid, password}` | `{ok, ssid, ip}` | set WiFi credentials |
+| POST | [`/api/config/relay`](#post-apiconfigrelay) | `{enabled, url, key}` | relay settings | relay mode on/off, address, key |
 | GET/POST | [`/api/sweep`](#get-apisweep) | – | `{ok, holdMs, channels}` | channel sweep |
 | POST | [`/api/reset`](#post-apireset) | – | `{ok, message}` | delete WiFi credentials, restart |
 | POST | [`/api/reboot`](#post-apireboot) | – | `{ok}` | restart |
@@ -132,6 +133,7 @@ Everything at a glance: device, WiFi, PWM, channel sweep, display order and all 
   "pwm": { "baseFrequency": 1000, "resolution": 12, "activeLow": true },
   "sweep": { "running": false, "channel": 0 },
   "display": "none",
+  "relay": { "enabled": false, "connected": false, "version": 0, "lastContact": null, "lastError": null },
   "order": ["red", "orange", "green", "blue", "white"],
   "lamps": [ … five lamp objects … ]
 }
@@ -147,7 +149,12 @@ Everything at a glance: device, WiFi, PWM, channel sweep, display order and all 
 | `wifi.rssi` | signal strength in dBm; always 0 in `ap` mode |
 | `pwm` | PWM carrier frequency in Hz, resolution in bits, whether the outputs are active LOW |
 | `sweep.channel` | during the channel sweep the channel currently lit, 1…5, otherwise 0 |
-| `display` | boot display currently overlaying the lamp state: `connecting` (blue pulsing), `portal` (orange pulsing), `connected` (green signal) or `none`. As long as it is not `none`, the lamps do not show the state from `lamps` – changes are still applied and appear afterwards. |
+| `display` | system display currently overlaying the lamp state: `connecting` (blue pulsing), `portal` (orange pulsing), `connected` (green signal), `relay-lost` (red pulsing dimly, relay mode without contact) or `none`. As long as it is not `none`, the lamps do not show the state from `lamps` – changes are still applied and appear afterwards. |
+| `relay.enabled` | relay mode on |
+| `relay.connected` | the last poll of the relay succeeded |
+| `relay.version` | version of the image last fetched from the relay |
+| `relay.lastContact` | seconds since the last successful poll, `null` if none yet. Up to 25 s is normal: the relay holds each request until something changes. |
+| `relay.lastError` | plain-text reason of the last failure, `null` after a success |
 | `order` | order of the lamps on the stack light from top to bottom |
 
 ```bash
@@ -328,13 +335,15 @@ Response: `{"lamps": [...]}` with all five lamps.
   "mode": "sta",
   "ssid": "MyWiFi",
   "apName": "StatusStackLight-88A8",
-  "baseFrequency": 1000
+  "baseFrequency": 1000,
+  "relay": { "enabled": true, "url": "https://relay.example.org", "keySet": true }
 }
 ```
 
 `ssid` is the configured network, even while the setup access point is open. `apName` is
 the name under which that access point appears; the suffix is the last two bytes of the MAC
-address.
+address. `relay` holds the [relay settings](#post-apiconfigrelay); the key itself is never
+given out, only whether one is set.
 
 ### GET /api/scan
 
@@ -419,6 +428,54 @@ Invoke-RestMethod http://192.168.4.1/api/config/wifi -Method Post `
 ```
 
 The timeout must be longer than the 20 seconds of the connection attempt.
+
+### POST /api/config/relay
+
+Switches [relay mode](README.md#relay-mode) on or off and sets the relay's address and API
+key. In relay mode the stack light fetches its state from the relay by long polling; the
+lamp endpoints above keep working, but the relay's next change overwrites what was set
+locally.
+
+```http
+POST /api/config/relay
+Content-Type: application/json
+
+{"enabled": true, "url": "https://relay.example.org", "key": "ssl_..."}
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `enabled` | boolean, required | relay mode on or off |
+| `url` | string, optional | `http://` or `https://`, host, optional port and path, no query. A trailing slash is removed. Left out: stays as stored. |
+| `key` | string, optional | API key with the role *lamp* from the relay. Left out: stays as stored. |
+
+Response: the stored settings, as under `relay` in [`/api/config`](#get-apiconfig):
+
+```json
+{"enabled": true, "url": "https://relay.example.org", "keySet": true}
+```
+
+The object from `/api/config` may be sent back as it is; `keySet` is ignored. Turning relay
+mode on needs an address and a key – stored or sent along:
+
+```json
+{"error": "relay mode needs an address and a key"}
+```
+
+Switching off takes effect at once: an answer that is still on its way is discarded. New
+settings are used from the next poll on, which then fetches the complete image. If a poll is
+still waiting at the relay, that is at the latest after about 25 seconds. Whether it worked is
+shown by [`/api/status`](#get-apistatus) under `relay`.
+
+```powershell
+$relay = @{ enabled = $true; url = 'https://relay.example.org'; key = 'ssl_...' } | ConvertTo-Json
+Invoke-RestMethod http://statusstacklight.local/api/config/relay -Method Post `
+                  -Body $relay -ContentType 'application/json'
+
+# off again, address and key stay stored
+Invoke-RestMethod http://statusstacklight.local/api/config/relay -Method Post `
+                  -Body '{"enabled":false}' -ContentType 'application/json'
+```
 
 ### GET /api/sweep
 

@@ -7,6 +7,7 @@
 #include "config.h"
 #include "lamp_state.h"
 #include "lamps.h"
+#include "relay_client.h"
 #include "web_assets.h"
 #include "wifi_portal.h"
 
@@ -128,9 +129,11 @@ void handleStatus()
     sweep["running"] = Lamps::sweepRunning();
     sweep["channel"] = Lamps::sweepChannel();
 
-    // While the boot display is running, the lamps do not show the state from
+    // While a system display is running, the lamps do not show the state from
     // /api/lamps - this field says why.
     doc["display"] = Lamps::systemDisplayName(Lamps::systemDisplay());
+
+    Relay::writeStatus(doc["relay"].to<JsonObject>());
 
     // Display order of the stack light from top to bottom - the web interface
     // should not have to know the order itself.
@@ -152,34 +155,12 @@ void handleLampsBatch()
     JsonDocument doc;
     if (!readBody(doc)) return;
 
-    LampState next[LAMP_COUNT];
-    bool      affected[LAMP_COUNT] = { false };
-    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
-        next[i] = Lamps::state(i);
-    }
-
-    for (JsonPairConst entry : doc.as<JsonObjectConst>()) {
-        const String identifier = entry.key().c_str();
-        const int    index      = Lamps::findIndex(identifier);
-        if (index < 0) {
-            sendUnknownLamp(identifier);
-            return;
-        }
-        if (!entry.value().is<JsonObjectConst>()) {
-            sendError(400, "value for " + identifier + " must be an object");
-            return;
-        }
-
-        const ValidationResult r = applyJson(next[index], entry.value().as<JsonObjectConst>(), false);
-        if (!r.ok) {
-            sendError(400, "lamp " + identifier + ": " + r.error);
-            return;
-        }
-        affected[index] = true;
-    }
-
-    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
-        if (affected[i]) Lamps::setState(i, next[i]);
+    String                 unknown;
+    const ValidationResult r = Lamps::applyBatch(doc.as<JsonObjectConst>(), &unknown);
+    if (!r.ok) {
+        if (!unknown.isEmpty()) sendUnknownLamp(unknown);
+        else                    sendError(400, r.error);
+        return;
     }
     sendAllLamps();
 }
@@ -241,7 +222,52 @@ void handleConfig()
     doc["ssid"]          = Network::ssid();
     doc["apName"]        = Network::apName();
     doc["baseFrequency"] = PWM_BASE_FREQUENCY;
+    Relay::writeConfig(doc["relay"].to<JsonObject>());
     sendJson(200, doc);
+}
+
+// POST /api/config/relay - {"enabled": true, "url": "...", "key": "..."}.
+// url and key may be left out to keep the stored values; the key is never
+// sent back.
+void handleConfigRelay()
+{
+    JsonDocument doc;
+    if (!readBody(doc)) return;
+
+    for (JsonPairConst entry : doc.as<JsonObjectConst>()) {
+        const String name = entry.key().c_str();
+        if (name != "enabled" && name != "url" && name != "key" && name != "keySet") {
+            sendError(400, "unknown field: '" + name + "'");
+            return;
+        }
+    }
+    if (!doc["enabled"].is<bool>()) {
+        sendError(400, "field 'enabled' must be true or false");
+        return;
+    }
+    if (!doc["url"].isNull() && !doc["url"].is<const char *>()) {
+        sendError(400, "field 'url' must be a string");
+        return;
+    }
+    if (!doc["key"].isNull() && !doc["key"].is<const char *>()) {
+        sendError(400, "field 'key' must be a string");
+        return;
+    }
+
+    const bool   hasUrl = doc["url"].is<const char *>();
+    const bool   hasKey = doc["key"].is<const char *>();
+    const String url    = hasUrl ? doc["url"].as<String>() : String();
+    const String key    = hasKey ? doc["key"].as<String>() : String();
+
+    String error;
+    if (!Relay::configure(doc["enabled"], hasUrl ? &url : nullptr, hasKey ? &key : nullptr, error)) {
+        sendError(400, error);
+        return;
+    }
+
+    JsonDocument response;
+    Relay::writeConfig(response.to<JsonObject>());
+    sendJson(200, response);
 }
 
 void handleConfigWifi()
@@ -439,6 +465,7 @@ void begin()
     server.on("/api/scan",        HTTP_GET,  handleScan);
     server.on("/api/config",      HTTP_GET,  handleConfig);
     server.on("/api/config/wifi", HTTP_POST, handleConfigWifi);
+    server.on("/api/config/relay", HTTP_POST, handleConfigRelay);
     server.on("/api/sweep",       HTTP_GET,  handleSweep);
     server.on("/api/sweep",       HTTP_POST, handleSweep);
     server.on("/api/reset",       HTTP_POST, handleReset);

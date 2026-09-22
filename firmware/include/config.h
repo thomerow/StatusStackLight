@@ -11,7 +11,7 @@
 // --- Device ----------------------------------------------------------------
 
 #define SSL_HOSTNAME       "StatusStackLight"   // DHCP name and mDNS -> statusstacklight.local
-#define SSL_FIRMWARE       "1.0.0"
+#define SSL_FIRMWARE       "1.1.0"
 #define SSL_AP_PREFIX      "StatusStackLight"   // setup AP is called StatusStackLight-XXXX
 
 // --- Lamps -----------------------------------------------------------------
@@ -140,3 +140,27 @@ static const uint32_t DISPLAY_FLASH_MS      = 1000;
 // own.
 static const uint32_t DISPLAY_PAUSE_MS      = 400;
 static const uint8_t  DISPLAY_BRIGHTNESS    = 100;   // %
+
+// Relay mode: the relay has not answered for RELAY_LOST_AFTER_MS. Red, but
+// slow and dim - clearly different from the steady red of an error, and quiet
+// enough not to alarm anyone: the stack light is only out of date.
+static const float    DISPLAY_RELAY_LOST_HZ         = 0.2f;
+static const uint8_t  DISPLAY_RELAY_LOST_BRIGHTNESS = 30;   // %
+
+// --- Relay mode ------------------------------------------------------------
+//
+// The stack light fetches its state from a relay server (relay/ in this repo)
+// instead of being switched over the local API. Long polling: the relay holds
+// each request until the state changes, at the latest RELAY_WAIT_S seconds.
+
+static const uint32_t RELAY_WAIT_S             = 25;
+// Longer than the wait, or every quiet poll would count as a failure.
+static const uint32_t RELAY_TIMEOUT_MS         = (RELAY_WAIT_S + 10) * 1000;
+static const uint32_t RELAY_CONNECT_TIMEOUT_MS = 5000;
+// Without a successful poll for this long, the relay display shows.
+static const uint32_t RELAY_LOST_AFTER_MS      = 60000;
+// Waiting time after the 1st, 2nd, 3rd, ... failure in a row; the last value
+// repeats.
+static const uint32_t RELAY_BACKOFF_MS[]       = { 2000, 5000, 10000, 30000 };
+static const size_t   RELAY_URL_MAX            = 200;
+static const size_t   RELAY_KEY_MAX            = 100;

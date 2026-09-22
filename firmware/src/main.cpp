@@ -5,6 +5,7 @@
 //   lamp_state.*   state of a lamp, validation and JSON
 //   lamp_store.*   last lamp state in NVS, survives restarts
 //   wifi_portal.*  credentials, station connection, setup AP with captive portal
+//   relay_client.* relay mode: fetches the lamp state from a relay server
 //   api_server.*   HTTP routes and the embedded web pages
 //
 // Pin assignment and everything else that is configurable: include/config.h
@@ -15,6 +16,7 @@
 #include "config.h"
 #include "lamp_store.h"
 #include "lamps.h"
+#include "relay_client.h"
 #include "wifi_portal.h"
 
 namespace {
@@ -70,6 +72,7 @@ void setup()
     Lamps::setSystemDisplay(Lamps::SystemDisplay::Connecting);
     Lamps::startEffectTask();
     Network::begin();
+    Relay::begin();
     Api::begin();
 
     Serial.println(F("[start] ready"));

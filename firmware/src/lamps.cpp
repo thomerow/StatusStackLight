@@ -23,6 +23,7 @@ volatile uint32_t             displaySince = 0;   // millis() when it was set
 int lampConnecting = -1;
 int lampConnected  = -1;
 int lampPortal     = -1;
+int lampRelayLost  = -1;
 
 void buildGammaTable()
 {
@@ -115,6 +116,10 @@ bool showSystemDisplay()
             }
             lamp  = lampConnected;
             value = elapsed < DISPLAY_FLASH_MS ? DISPLAY_BRIGHTNESS : 0;
+            break;
+        case Lamps::SystemDisplay::RelayLost:
+            lamp  = lampRelayLost;
+            value = pulse(fmodf(seconds * DISPLAY_RELAY_LOST_HZ, 1.0f), DISPLAY_RELAY_LOST_BRIGHTNESS);
             break;
         default:
             break;
@@ -216,6 +221,7 @@ void begin()
     lampConnecting = findIndex("blue");
     lampConnected  = findIndex("green");
     lampPortal     = findIndex("orange");
+    lampRelayLost  = findIndex("red");
 }
 
 void startEffectTask()
@@ -239,6 +245,47 @@ void setState(uint8_t index, const LampState &state)
     taskENTER_CRITICAL(&mux);
     states[index] = state;
     taskEXIT_CRITICAL(&mux);
+}
+
+ValidationResult applyBatch(JsonObjectConst source, String *unknownLamp)
+{
+    LampState next[LAMP_COUNT];
+    bool      affected[LAMP_COUNT] = { false };
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        next[i] = state(i);
+    }
+
+    ValidationResult result;
+    for (JsonPairConst entry : source) {
+        const String identifier = entry.key().c_str();
+        const int    index      = findIndex(identifier);
+        if (index < 0) {
+            if (unknownLamp) *unknownLamp = identifier;
+            result.ok    = false;
+            result.error = "unknown lamp: " + identifier;
+            return result;
+        }
+        if (!entry.value().is<JsonObjectConst>()) {
+            result.ok    = false;
+            result.error = "value for " + identifier + " must be an object";
+            return result;
+        }
+
+        const ValidationResult r = applyJson(next[index], entry.value().as<JsonObjectConst>(), false);
+        if (!r.ok) {
+            result.ok    = false;
+            result.error = "lamp " + identifier + ": " + r.error;
+            return result;
+        }
+        affected[index] = true;
+    }
+
+    taskENTER_CRITICAL(&mux);
+    for (uint8_t i = 0; i < LAMP_COUNT; i++) {
+        if (affected[i]) states[i] = next[i];
+    }
+    taskEXIT_CRITICAL(&mux);
+    return result;
 }
 
 int findIndex(const String &identifier)
@@ -288,6 +335,13 @@ void setSystemDisplay(SystemDisplay d)
     display      = d;
 }
 
+void clearSystemDisplay(SystemDisplay expected)
+{
+    if (display == expected) {
+        display = SystemDisplay::None;
+    }
+}
+
 SystemDisplay systemDisplay()
 {
     return display;
@@ -299,6 +353,7 @@ const char *systemDisplayName(SystemDisplay d)
         case SystemDisplay::Connecting: return "connecting";
         case SystemDisplay::Portal:     return "portal";
         case SystemDisplay::Connected:  return "connected";
+        case SystemDisplay::RelayLost:  return "relay-lost";
         default:                        return "none";
     }
 }
