@@ -1,0 +1,13 @@
+# --- .NET build output -------------------------------------------------------
+bin/
+obj/
+publish/
+*.user
+.vs/
+TestResults/
+
+# --- Local runtime data (database, data protection keys) ----------------------
+data/
+*.db
+*.db-shm
+*.db-wal
