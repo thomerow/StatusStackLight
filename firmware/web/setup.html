@@ -83,7 +83,7 @@ a { color: var(--akzent); }
   <div id="netze">wird gesucht ...</div>
 </div>
 
-<p class="unter"><a href="/">Zurueck zur Steuerung</a></p>
+<p class="unter"><a href="/">Zurück zur Steuerung</a></p>
 
 </div>
 <script>
@@ -105,7 +105,7 @@ fetch("/api/scan").then(a => a.json()).then(d => {
   const ziel = document.getElementById("netze");
   if (!d.networks.length) { ziel.textContent = "keine Netze gefunden"; return; }
 
-  // Staerkstes zuerst, Doppelte (mehrere Accesspoints, gleiche SSID) raus.
+  // Stärkstes zuerst, Doppelte (mehrere Accesspoints, gleiche SSID) raus.
   const gesehen = new Set();
   ziel.innerHTML = "";
   d.networks.sort((a, b) => b.rssi - a.rssi).forEach(n => {
@@ -129,7 +129,7 @@ document.getElementById("formular").onsubmit = ev => {
   const knopf = document.getElementById("senden");
   knopf.disabled = true;
 
-  // Das Geraet probiert die Daten erst aus und speichert nur bei Erfolg.
+  // Das Gerät probiert die Daten erst aus und speichert nur bei Erfolg.
   // Deshalb dauert die Antwort bis zu 20 Sekunden - und deshalb steht hier ein
   // Hinweis statt eines stumm wartenden Knopfes.
   meldung("warte", "Verbindung wird getestet, das kann bis zu 20 Sekunden dauern ...");
@@ -145,7 +145,7 @@ document.getElementById("formular").onsubmit = ev => {
     knopf.disabled = false;
     if (!a.ok) { meldung("schlecht", j.error || "Fehler " + a.status); return; }
     meldung("gut",
-      "Verbunden. Das Geraet ist jetzt unter <b>http://" + j.ip + "/</b> " +
+      "Verbunden. Das Gerät ist jetzt unter <b>http://" + j.ip + "/</b> " +
       "beziehungsweise <b>http://statusstacklight.local/</b> erreichbar. " +
       "Diesen Accesspoint kannst du verlassen.");
   })).catch(() => {
@@ -154,7 +154,7 @@ document.getElementById("formular").onsubmit = ev => {
     knopf.disabled = false;
     meldung("gut",
       "Die Verbindung zum Accesspoint ist abgebrochen - das passiert genau dann, " +
-      "wenn das Geraet ins WLAN gewechselt ist. Versuche es unter " +
+      "wenn das Gerät ins WLAN gewechselt ist. Versuche es unter " +
       "<b>http://statusstacklight.local/</b> oder schau im Router nach.");
   });
 };

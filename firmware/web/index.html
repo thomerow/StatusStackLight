@@ -112,9 +112,9 @@ a { color: var(--akzent); }
     <a href="/setup">WLAN einrichten</a>
   </div>
   <p class="hinweis">
-    Der Kanal-Durchlauf schaltet die Kanaele 1 bis 5 nacheinander einzeln ein und
+    Der Kanal-Durchlauf schaltet die Kanäle 1 bis 5 nacheinander einzeln ein und
     meldet dabei auf der seriellen Konsole, welche Farbe erwartet wird - gut zum
-    Pruefen nach einem Lampenwechsel oder bei Verdacht auf einen Wackelkontakt.
+    Prüfen nach einem Lampenwechsel oder bei Verdacht auf einen Wackelkontakt.
     Leuchtet eine andere Lampe als angesagt, ist die Tabelle in
     <code>include/config.h</code> zu tauschen.
   </p>
@@ -129,7 +129,7 @@ const EFFEKTE = { steady: "dauerhaft", blink: "blinken", pulse: "pulsieren" };
 let lampen   = [];      // Reihenfolge wie angezeigt
 let aufgebaut = false;
 let sperren  = {};      // id+feld -> Zeitpunkt, bis zu dem der Server nicht reinredet
-const wartend = {};     // id -> ausstehende Aenderungen (Entprellung)
+const wartend = {};     // id -> ausstehende Änderungen (Entprellung)
 const zeitgeber = {};
 
 function hol(pfad, optionen) {
@@ -141,11 +141,26 @@ function hol(pfad, optionen) {
 
 // Schiebereglern beim Ziehen nicht ins Handwerk pfuschen: nach einer
 // Bedienung bleibt das jeweilige Feld kurz gegen Serverwerte gesperrt, sonst
-// springt der Regler beim naechsten Abgleich zurueck.
+// springt der Regler beim nächsten Abgleich zurück.
 function sperre(id, feld) { sperren[id + "." + feld] = Date.now() + 1500; }
 function gesperrt(id, feld) { return (sperren[id + "." + feld] || 0) > Date.now(); }
 
-// Entprellung: ein gezogener Regler loest sonst hundert Anfragen aus.
+// Blinktakt logarithmisch: linear verteilt landeten die brauchbaren langsamen
+// Werte (0,3 Hz Pulsieren, 1,2 Hz Warten) auf wenigen Millimetern am linken
+// Rand. So liegt 1 Hz in der Mitte, 0,1-1 Hz bekommt den halben Regelweg.
+// Der Regler kennt nur Positionen 0...1000, Hz gibt es erst beim Umrechnen.
+const TAKT_MIN = 0.1, TAKT_MAX = 10;
+function hzAusPosition(p) {
+  const hz = TAKT_MIN * Math.pow(TAKT_MAX / TAKT_MIN, p / 1000);
+  return +hz.toPrecision(2);
+}
+function positionAusHz(hz) {
+  const p = 1000 * Math.log(hz / TAKT_MIN) / Math.log(TAKT_MAX / TAKT_MIN);
+  return Math.min(1000, Math.max(0, Math.round(p)));
+}
+function zeigeHz(hz) { return (hz < 1 ? hz.toFixed(2) : hz.toFixed(1)).replace(".", ",") + " Hz"; }
+
+// Entprellung: ein gezogener Regler löst sonst hundert Anfragen aus.
 function aendere(id, feld, wert) {
   sperre(id, feld);
   wartend[id] = Object.assign(wartend[id] || {}, { [feld]: wert });
@@ -192,7 +207,7 @@ function baueKarte(l) {
     </div>
     <div class="regler" data-nur="takt">
       <label>Blinktakt</label>
-      <input type="range" min="0.1" max="20" step="0.1" data-feld="frequency">
+      <input type="range" min="0" max="1000" step="1" data-feld="frequency">
       <output data-aus="frequency"></output>
     </div>
     <div class="regler" data-nur="blink">
@@ -205,9 +220,13 @@ function baueKarte(l) {
     const feld = el.dataset.feld;
     const lesen = () => el.type === "checkbox" ? el.checked
                       : el.tagName === "SELECT" ? el.value
-                      : feld === "frequency"    ? parseFloat(el.value)
+                      : feld === "frequency"    ? hzAusPosition(+el.value)
                       :                           parseInt(el.value, 10);
-    el.addEventListener("input",  () => { sperre(l.id, feld); zeigeWerte(karte); });
+    el.addEventListener("input",  () => {
+      sperre(l.id, feld);
+      delete el.dataset.hz;       // ab jetzt zählt die Reglerposition
+      zeigeWerte(karte);
+    });
     el.addEventListener("change", () => aendere(l.id, feld, lesen()));
   });
 
@@ -217,7 +236,11 @@ function baueKarte(l) {
 function zeigeWerte(karte) {
   const q = f => karte.querySelector('[data-feld="' + f + '"]');
   karte.querySelector('[data-aus="brightness"]').textContent = q("brightness").value + " %";
-  karte.querySelector('[data-aus="frequency"]').textContent  = (+q("frequency").value).toFixed(1) + " Hz";
+  // Den echten Serverwert zeigen, solange nicht gezogen wird: per API sind bis
+  // 20 Hz erlaubt, der Regler steht dann nur am Anschlag bei 10.
+  const takt = q("frequency");
+  karte.querySelector('[data-aus="frequency"]').textContent  =
+    zeigeHz(takt.dataset.hz !== undefined ? +takt.dataset.hz : hzAusPosition(+takt.value));
   karte.querySelector('[data-aus="duty"]').textContent       = q("duty").value + " %";
 
   const effekt = q("effect").value;
@@ -232,7 +255,9 @@ function zeichneLampe(l) {
   const setze = (feld, wert) => {
     if (gesperrt(l.id, feld)) return;
     const el = karte.querySelector('[data-feld="' + feld + '"]');
-    if (el.type === "checkbox") el.checked = wert; else el.value = wert;
+    if (el.type === "checkbox") el.checked = wert;
+    else if (feld === "frequency") { el.value = positionAusHz(wert); el.dataset.hz = wert; }
+    else el.value = wert;
   };
   setze("on", l.on);
   setze("brightness", l.brightness);
@@ -244,7 +269,7 @@ function zeichneLampe(l) {
   punkt.className = "punkt" + (l.on ? " an " + l.effect : "");
   punkt.style.setProperty("--takt", (1 / l.frequency).toFixed(3) + "s");
   // Helligkeit im Browser nur andeuten - die Lampe selbst ist gammakorrigiert,
-  // hier geht es blosss darum, dass man 10 % von 100 % unterscheiden kann.
+  // hier geht es bloß darum, dass man 10 % von 100 % unterscheiden kann.
   punkt.style.filter = l.on ? "brightness(" + (0.35 + 0.65 * l.brightness / 100).toFixed(2) + ")" : "";
 
   zeigeWerte(karte);
@@ -267,7 +292,7 @@ function zeichneStatus(s) {
 function abgleich() {
   hol("/api/status").then(s => {
     if (!aufgebaut) {
-      // Reihenfolge kommt vom Geraet (Saeule von oben nach unten), damit die
+      // Reihenfolge kommt vom Gerät (Säule von oben nach unten), damit die
       // Seite die Zuordnung nicht doppelt kennen muss.
       lampen = s.order.map(id => s.lamps.find(l => l.id === id));
       const ziel = document.getElementById("lampen");
@@ -295,7 +320,7 @@ document.getElementById("durchlauf").onclick = () =>
   hol("/api/sweep", { method: "POST" }).catch(zeigeFehler);
 
 document.getElementById("neustart").onclick = () => {
-  if (confirm("Geraet neu starten?")) {
+  if (confirm("Gerät neu starten?")) {
     hol("/api/reboot", { method: "POST" }).catch(() => {});
   }
 };

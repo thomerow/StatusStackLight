@@ -45,9 +45,9 @@ struct LampenKanal {
 // andere Lampe als angesagt, werden hier die Zeilen getauscht und sonst
 // nichts.
 static const LampenKanal LAMPEN[LAMPEN_ANZAHL] = {
-    {  4, "white",  "weiss",  "#f8fafc" },   // Kanal 1
+    {  4, "white",  "weiß",   "#f8fafc" },   // Kanal 1
     {  5, "blue",   "blau",   "#3b82f6" },   // Kanal 2
-    {  6, "green",  "gruen",  "#22c55e" },   // Kanal 3
+    {  6, "green",  "grün",   "#22c55e" },   // Kanal 3
     {  7, "orange", "orange", "#f59e0b" },   // Kanal 4
     { 15, "red",    "rot",    "#ef4444" },   // Kanal 5
 };
