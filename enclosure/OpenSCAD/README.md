@@ -2,7 +2,7 @@
 
 Parametrisches, 3D-druckbares Gehäuse, das eine industrielle Signalsäule trägt und die
 Elektronik aufnimmt: ESP32-S3 DevKitC-1 (N16R8), 8-Kanal-MOSFET-Modul, Mini560-Buck-Converter
-(12 V → 5 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
+(12 V → 3,3 V) und ein USB-C-PD-Triggerboard, das 12 V vom Netzteil anfordert.
 
 **Die Säule hat 5 Lampen.** Genutzt werden also nur 5 der 8 MOSFET-Kanäle; die restlichen
 drei bleiben absichtlich frei. Das 8-Kanal-Modul steckt trotzdem drin, weil es vorhanden
@@ -240,8 +240,11 @@ Druckbett und kommt sauber heraus, ohne Stützen.
 
 1. Inserts in Hauptkörper einpressen (M3 in die Eckdome, M4 in die Säulendome von innen).
 2. Bodenplatte bestücken: MOSFET-Modul, ESP32-S3, Buck und PD-Board in die Clipse drücken.
-3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 5 V → ESP32-S3
-   (5V-Pin), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
+3. Verdrahten: USB-C-PD → 12 V an MOSFET-Modul und Mini560-Eingang, Ausgang 3,3 V → ESP32-S3
+   (3V3-Pin), GPIOs → MOSFET-Steuereingänge (Pinbelegung siehe oben), gemeinsame Masse.
+   Der 3V3-Pin speist am Spannungsregler des Boards vorbei. Laut Espressif schließen sich
+   die Versorgung über 3V3 und über USB gegenseitig aus - zum Flashen per USB also besser
+   die 3,3-V-Leitung trennen (Masse darf bleiben).
 4. Lampenkabel durch die Deckeldurchführung fädeln und an die MOSFET-Klemmen legen –
    5 Lampen, also 5 belegte Kanäle plus gemeinsame Rückleitung.
 5. Bodenplatte senkrecht von unten einführen (alle drei USB-C-Buchsen gleiten in ihre Schlitze),

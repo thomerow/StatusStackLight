@@ -2,7 +2,7 @@
 //  StatusStackLight - Gehaeuse fuer industrielle Signalsaeule
 //  Stufe 1: zweiteilig (Hauptkoerper mit integriertem Deckel + abnehmbarer Boden)
 //
-//  Inhalt:  Lolin NodeMCU V3, 8-Kanal-MOSFET-Modul, LM2596 Buck 12V->5V,
+//  Inhalt:  ESP32-S3 DevKitC-1 (N16R8), 8-Kanal-MOSFET-Modul, Mini560 Buck 12V->3,3V,
 //           USB-C-PD-Triggerboard (fordert 12 V an)
 //
 //  Koordinatensystem (alle Layoutmasse in "Innenkoordinaten"):
