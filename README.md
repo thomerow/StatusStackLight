@@ -4,7 +4,9 @@ An industrial stack light with five lamps, driven by an ESP32-S3 in a 3D-printed
 dimmable, blinking and pulsing, via an HTTP API and a web interface on the local network. In
 everyday use it shows what the running Claude Code sessions are doing right now.
 
-![Base with electronics, rendering](enclosure/OpenSCAD/preview/05_assembled.png)
+<p align="center">
+  <img src="docs/images/stacklight.jpg" alt="The stack light with all five lamps lit on its 3D-printed base" width="360">
+</p>
 
 ## The three parts
 
