@@ -185,6 +185,19 @@ bool speichereZugang(const String &neueSsid, const String &passwort, String &feh
         WiFi.disconnect(false, true);
         if (apModus) {
             WiFi.mode(WIFI_AP);
+        } else {
+            // Im laufenden Betrieb hat der Versuch die bestehende Verbindung
+            // getrennt. Ohne diesen Schritt versuchte tick() per reconnect()
+            // weiter die gerade gescheiterten Daten und oeffnete nach
+            // WLAN_NEUSTART_NACH den Konfig-AP, obwohl die alten Daten noch
+            // gespeichert sind.
+            Serial.println(F("[wlan] zurueck ins bisherige WLAN"));
+            if (verbinde(gespeicherteSsid, gespeichertesPasswort, WLAN_VERBINDE_TIMEOUT)) {
+                starteMdns();
+            }
+            // Klappt auch das nicht, uebernimmt tick() wie bei jedem anderen
+            // Verbindungsverlust - jetzt mit den alten Daten.
+            getrenntSeit = 0;
         }
         return false;
     }

@@ -397,10 +397,10 @@ Fehlschlag – `400`:
 bestehende Verbindung, die Antwort kommt deshalb in aller Regel nicht an.
 
 - Bei Erfolg ist das Gerät danach im neuen WLAN.
-- ⚠ **Bei einem Fehlschlag verliert das Gerät auch die bisherige Verbindung** und öffnet nach
-  zwei Minuten den Konfigurations-Accesspoint, obwohl die alten Zugangsdaten noch gespeichert
-  sind. Ein Neustart (Strom kurz trennen) verbindet es wieder mit dem bisherigen WLAN. Das
-  ist ein bekannter Fehler der Firmware.
+- Bei einem Fehlschlag verbindet sich das Gerät wieder mit dem bisherigen WLAN, spätestens
+  20 Sekunden nach dem gescheiterten Versuch. Die gespeicherten Zugangsdaten bleiben
+  unverändert. Ob der Versuch geklappt hat, zeigt danach [`/api/config`](#get-apiconfig) im
+  Feld `ssid`.
 
 Das Passwort wird im Klartext übertragen – HTTP ist unverschlüsselt, und der
 Konfigurations-Accesspoint ist ein offenes WLAN.
