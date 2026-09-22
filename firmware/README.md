@@ -240,7 +240,7 @@ Web-Interface oder curl.
 
 | Lampe | Zustand | Darstellung |
 |---|---|---|
-| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,1 Hz, bis 25 % |
+| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,15 Hz, bis 30 % |
 | grün | fertig – gerade fertig geworden | dauerhaft, 45 %, fünf Minuten lang |
 | blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
 | orange | Rückfrage an dich | dauerhaft, 40 % |
