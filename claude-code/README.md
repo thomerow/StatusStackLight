@@ -3,7 +3,8 @@
 `stacklight.ps1` shows on the stack light what the running
 [Claude Code](https://claude.com/claude-code) sessions are doing right now: whether Claude
 is working, is done, has a question or is waiting for an approval. The script hooks into
-Claude Code and drives the stack light through the [firmware's HTTP API](../firmware/API.md).
+Claude Code and drives the stack light through the [firmware's HTTP API](../firmware/API.md) –
+or, in [relay mode](#relay-mode), through a relay server the stack light polls.
 
 ## What the stack light shows
 
@@ -44,6 +45,42 @@ red sits on top independently.
 The script keeps its state under `~/.claude/stacklight/` (one file per session, plus
 `_timer.json` and `_error.log`). It always exits with exit code 0 – an unreachable stack
 light never holds up Claude Code; errors end up in `_error.log`.
+
+## Relay mode
+
+Without a relay, computer and stack light must be on the same network. With the
+[relay](../relay/README.md), a small server anywhere on the internet, they need not: the script
+reports its events there, and the stack light fetches the result. Sessions on several
+computers then show up on the same stack light.
+
+Set two environment variables for the user that runs Claude Code, with a key of the role
+*client* from the relay's admin interface, and restart Claude Code:
+
+```powershell
+setx STACKLIGHT_RELAY_URL "https://relay.example.org"
+setx STACKLIGHT_RELAY_KEY "ssl_…"
+```
+
+The hooks stay exactly as they are. As soon as both variables are set, the script sends every
+event as one `POST /api/v1/events` to the relay instead of switching the stack light itself;
+without them it works in LAN mode as before. `-RelayUrl` and `-RelayKey` override the
+variables, for example to try it out:
+
+```powershell
+& $s -Event Status -RelayUrl https://relay.example.org -RelayKey ssl_…
+```
+
+In relay mode, the appearance and the event rules are set in the relay's admin interface –
+the `$Display` table in the script only applies to LAN mode. Two things stay local:
+
+- **The dangerous-command check.** For `Danger` the script checks the command text itself and
+  only reports `Danger` – the command never leaves the computer.
+- **The `ToolDone` shortcut.** `PostToolUse` fires after every tool call; the script only
+  reports it while the session is waiting or asking, the condition of the relay's default
+  rule. For this it keeps its session files as before.
+
+`SelfTest` talks to the stack light directly and only works in LAN mode. `AllOff` makes the
+relay forget all sessions, including those of other computers.
 
 ## How it works
 

@@ -44,6 +44,20 @@
     Session states in the files: idle (opened), working, asking (question),
     waiting (approval), done.
 
+    RELAY MODE: with -RelayUrl and -RelayKey (or the environment variables
+    STACKLIGHT_RELAY_URL and STACKLIGHT_RELAY_KEY) the script does not talk
+    to the stack light at all. It reports each event to the relay server
+    (relay/ in this repo), which combines the sessions of all computers and
+    which the stack light polls. What the lamps show is then configured in
+    the relay's admin interface, not in the table below.
+
+    Two things still happen locally in relay mode:
+      * The dangerous-command check for -Event Danger. Only "Danger" is
+        reported, the command text never leaves the computer.
+      * The session bookkeeping, so ToolDone - fired after every tool call -
+        is only reported while the session is waiting or asking. That is the
+        condition of the relay's default rule.
+
 .PARAMETER Event
     SessionStart | UserPromptSubmit | Approval | Question | ToolDone |
     Stop | StopFailure | ToolFailure | SessionEnd | Danger | Tick |
@@ -54,7 +68,8 @@
     the agent. The script ALWAYS exits with exit code 0 - a broken lamp must
     never hold up the work.
 
-    Requires the firmware from firmware/ in this repo (API /api/lamps).
+    Requires the firmware from firmware/ in this repo (API /api/lamps), or in
+    relay mode the relay from relay/ (API /api/v1/events).
 #>
 [CmdletBinding()]
 param(
@@ -81,6 +96,11 @@ param(
     [int]    $DoneMinutes  = 5,
 
     [double] $FlashSeconds = 1.2,
+
+    # Relay mode, see above. Both must be set, otherwise LAN mode.
+    [string] $RelayUrl = $env:STACKLIGHT_RELAY_URL,
+    [string] $RelayKey = $env:STACKLIGHT_RELAY_KEY,
+
     [switch] $Quiet
 )
 
@@ -92,6 +112,8 @@ switch ($Event) {
 }
 
 $StateDir  = Join-Path $HOME '.claude\stacklight'
+$RelayMode = [bool] ($RelayUrl -and $RelayKey)
+if ($RelayUrl) { $RelayUrl = $RelayUrl.TrimEnd('/') }
 $LogFile   = Join-Path $StateDir '_error.log'
 
 # Order as on the stack light from top to bottom - only for the output of
@@ -368,12 +390,85 @@ function Send-Lamps {
 }
 
 # ---------------------------------------------------------------------------
+#  Relay mode
+# ---------------------------------------------------------------------------
+
+function Invoke-Relay {
+    param([string] $Method, [string] $Path, $Body)
+
+    $params = @{
+        Uri         = "$RelayUrl$Path"
+        Method      = $Method
+        Headers     = @{ Authorization = "Bearer $RelayKey" }
+        TimeoutSec  = 3
+        ErrorAction = 'Stop'
+    }
+    if ($null -ne $Body) {
+        $params.Body        = ConvertTo-Json -InputObject $Body -Compress
+        $params.ContentType = 'application/json'
+    }
+    return Invoke-RestMethod @params
+}
+
+function Send-RelayEvent {
+    param([string] $Name, [string] $Id)
+    try {
+        Invoke-Relay -Method Post -Path '/api/v1/events' `
+                     -Body @{ event = $Name; session = $Id; host = $env:COMPUTERNAME } | Out-Null
+        return $true
+    } catch {
+        Write-Log "POST /api/v1/events ($Name) failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# What the relay shows right now - the counterpart of -Event Status in LAN mode.
+function Show-RelayStatus {
+    'Mode    : relay, {0}' -f $RelayUrl | Write-Output
+    try {
+        $s = Invoke-Relay -Method Get -Path '/api/v1/status'
+    } catch {
+        'Error   : {0}' -f $_.Exception.Message | Write-Output
+        return
+    }
+    'State   : {0}{1}' -f $(if ($s.state) { $s.state } else { 'no session open' }),
+                          $(if ($s.error) { ' + error' } else { '' }) | Write-Output
+    '' | Write-Output
+    foreach ($name in $LAMPS) {
+        $l = $s.lamps.$name
+        if ($l.on) {
+            $how = switch ($l.effect) {
+                'blink' { 'blinking {0:0.#} Hz, {1} % duty' -f $l.frequency, $l.duty }
+                'pulse' { 'pulsing {0:0.##} Hz'             -f $l.frequency }
+                default { 'steady' }
+            }
+            '{0,-7} ON  {1,3} %  {2}' -f $name, $l.brightness, $how | Write-Output
+        } else {
+            '{0,-7} --' -f $name | Write-Output
+        }
+    }
+    '' | Write-Output
+    'Sessions: {0}' -f @($s.sessions).Count | Write-Output
+    foreach ($x in $s.sessions) {
+        '  {0,-8}  {1,-16} {2}{3}' -f $x.id, $x.host, $x.state,
+                                      $(if ($x.error) { ' + error' } else { '' }) | Write-Output
+    }
+    'Lights  : {0}' -f @($s.stackLights).Count | Write-Output
+    foreach ($x in $s.stackLights) {
+        '  {0,-24} last seen {1}' -f $x.name, $x.lastSeen | Write-Output
+    }
+}
+
+# ---------------------------------------------------------------------------
 #  Main
 # ---------------------------------------------------------------------------
 try {
     if (-not (Test-Path $StateDir)) {
         New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
     }
+
+    # The relay handles time itself, there is no straggler.
+    if ($RelayMode -and $Event -eq 'Tick') { exit 0 }
 
     # The straggler waits BEFORE the mutex - otherwise it would sit on it for
     # five minutes and block every other hook.
@@ -390,10 +485,14 @@ try {
 
     # Serialise all writes and HTTP calls: several sessions can fire at the
     # same time, and two parallel runs would overtake each other - the older
-    # state might then arrive last.
-    $mutex = New-Object System.Threading.Mutex($false, 'Global\ClaudeStacklight')
+    # state might then arrive last. Not needed in relay mode: there, every run
+    # reports only its own event, and the relay puts them in order.
+    $mutex = $null
     $held  = $false
-    try { $held = $mutex.WaitOne(3000) } catch [System.Threading.AbandonedMutexException] { $held = $true }
+    if (-not $RelayMode) {
+        $mutex = New-Object System.Threading.Mutex($false, 'Global\ClaudeStacklight')
+        try { $held = $mutex.WaitOne(3000) } catch [System.Threading.AbandonedMutexException] { $held = $true }
+    }
 
     if ($Event -ne 'ToolDone') {
         $hook = Read-HookInput
@@ -416,12 +515,24 @@ try {
         # The tool has run (approved, or question answered) - Claude keeps
         # working.
         'ToolDone'         { Set-SessionState -Id $sid -State 'working' }
-        'Stop'             { Set-SessionState -Id $sid -State 'done';   Start-DoneTimer }
-        'StopFailure'      { Set-SessionState -Id $sid -State 'done'    -ErrorFlag $true; Start-DoneTimer }
+        'Stop'             { Set-SessionState -Id $sid -State 'done'
+                             if (-not $RelayMode) { Start-DoneTimer } }
+        'StopFailure'      { Set-SessionState -Id $sid -State 'done'    -ErrorFlag $true
+                             if (-not $RelayMode) { Start-DoneTimer } }
         'ToolFailure'      { Set-SessionState -Id $sid -ErrorFlag $true }
         'SessionEnd'       { Remove-SessionState -Id $sid }
         'AllOff'           { Get-ChildItem $StateDir -Filter '*.json' -File -EA SilentlyContinue |
                                 Remove-Item -Force -EA SilentlyContinue }
+    }
+
+    if ($RelayMode) {
+        switch ($Event) {
+            'Status'   { Show-RelayStatus }
+            'SelfTest' { 'SelfTest only works in LAN mode - it talks to the stack light directly.' | Write-Output }
+            'Danger'   { if (Test-Dangerous -HookInput $hook) { Send-RelayEvent -Name 'Danger' -Id $sid | Out-Null } }
+            default    { Send-RelayEvent -Name $Event -Id $sid | Out-Null }
+        }
+        exit 0
     }
 
     switch ($Event) {

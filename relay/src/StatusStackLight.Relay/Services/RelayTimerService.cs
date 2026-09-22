@@ -8,13 +8,13 @@ namespace StatusStackLight.Relay.Services;
 /// forgotten, the warning flash ends. Replaces the straggler process (-Event Tick) of the
 /// script's LAN mode.
 ///
-/// One second is fine enough for all of them - the shortest is the warning flash of 1.2 s,
-/// which then lasts 1.2...2.2 s. Nobody measures that.
+/// A quarter second keeps the warning flash close to its set duration (1.2 s become
+/// 1.2...1.45 s); a tick without a change costs a few comparisons and nothing else.
 /// </summary>
 public sealed class RelayTimerService(RelayEngine engine, ApiKeyService keys, ILogger<RelayTimerService> log)
     : BackgroundService
 {
-    private static readonly TimeSpan Interval   = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan Interval   = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan FlushEvery = TimeSpan.FromMinutes(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
