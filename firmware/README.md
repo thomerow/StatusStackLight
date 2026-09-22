@@ -228,6 +228,7 @@ web/setup.html          WLAN-Konfigurationsseite (Quelle)
 src/main.cpp            setup/loop
 src/lampen.*            LEDC, Effekt-Engine, Gamma, Invertierung
 src/lampenzustand.*     Zustand einer Lampe, Prüfung, JSON
+src/lampenspeicher.*    letzter Lampenzustand im NVS, übersteht Neustarts
 src/wlan_portal.*       Zugangsdaten, STA-Verbindung, Konfig-AP, Captive Portal
 src/api_server.*        HTTP-Routen
 ```
@@ -246,6 +247,23 @@ synchrone `WebServer` aus dem Arduino-Core genügt: selbst ein hängender HTTP-C
 Blinken nicht ins Stocken bringen. Dadurch spart sich das Projekt die Abhängigkeit auf
 ESPAsyncWebServer und AsyncTCP samt deren Versionsfallen.
 
+### Zustand über Neustarts hinweg
+
+Die Firmware merkt sich den Zustand aller fünf Lampen im NVS (Bereich `ssl-lampen`, getrennt
+von den WLAN-Daten – `/api/reset` lässt ihn stehen) und stellt ihn beim Start wieder her,
+noch bevor der Effekt-Task anläuft. Ohne das stünde die Säule nach Stromausfall, Neustart
+oder Flashen dunkel, bis der nächste Hook zufällig den Sollzustand schickt – und wartet
+Claude gerade auf Eingabe, feuert keiner.
+
+Geschrieben wird nur bei einer echten Änderung und erst nach 2 s Ruhe
+(`SPEICHER_VERZOEGERUNG_MS`). Das Hook-Skript schickt bei jedem Ereignis den kompletten
+Zustand, meist unverändert – das löst keinen Schreibvorgang aus. Ein gezogener Regler im
+Web-Interface ergibt einen statt zwanzig, und der Warnblitz ist vorbei, bevor er im Flash
+landet.
+
+Der wiederhergestellte Zustand kann veraltet sein – etwa blau pulsierend von einer Session,
+die während des Stromausfalls zu Ende ging. Der nächste Hook korrigiert das.
+
 ### PWM-Grundfrequenz
 
 Fest auf **1 kHz** (`PWM_GRUNDFREQUENZ` in `config.h`), nicht zur Laufzeit änderbar. Nach oben
@@ -261,7 +279,9 @@ Pulsiertakt (0.1–20 Hz) und hat mit der PWM-Trägerfrequenz nichts zu tun.
 Angesteuert wird die Säule von `~/.claude/stacklight.ps1`, das über Hooks in
 `~/.claude/settings.json` hängt (liegt außerhalb dieses Repos). Jede Session legt ihren
 Zustand als Datei unter `~/.claude/stacklight/` ab; daraus wird berechnet, was die Lampen
-zeigen, und in **einem** `POST /api/lamps` gesetzt.
+zeigen, und in **einem** `POST /api/lamps` gesetzt – bei jedem Ereignis vollständig, auch
+wenn sich nichts geändert hat. So heilt der nächste Hook jede Abweichung, ob durch Neustart,
+Web-Interface oder curl.
 
 | Lampe | Zustand | Darstellung |
 |---|---|---|

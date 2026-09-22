@@ -3,6 +3,7 @@
 // Aufbau:
 //   lampen.*         LEDC-Ansteuerung und Effekt-Engine (eigener Task, Core 0)
 //   lampenzustand.*  Zustand einer Lampe, Pruefung und JSON
+//   lampenspeicher.* letzter Lampenzustand im NVS, ueberlebt Neustarts
 //   wlan_portal.*    Zugangsdaten, STA-Verbindung, Konfig-AP mit Captive Portal
 //   api_server.*     HTTP-Routen und die eingebetteten Web-Seiten
 //
@@ -13,6 +14,7 @@
 #include "api_server.h"
 #include "config.h"
 #include "lampen.h"
+#include "lampenspeicher.h"
 #include "wlan_portal.h"
 
 namespace {
@@ -63,6 +65,7 @@ void setup()
 
     zeigeStartmeldung();
 
+    Lampenspeicher::lade();
     Lampen::starteEffektTask();
     Wlan::begin();
     Api::begin();
@@ -74,6 +77,7 @@ void loop()
 {
     Wlan::tick();
     Api::tick();
+    Lampenspeicher::tick();
 
     // Die Lampen haengen nicht an dieser Schleife - sie werden vom Effekt-Task
     // auf Core 0 bedient. Das kurze Warten gibt nur dem Leerlauf-Task Luft.

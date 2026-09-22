@@ -121,3 +121,4 @@ static const uint32_t EFFEKT_TAKT_HZ        = 100;    // Aktualisierungsrate der
 static const uint32_t WLAN_VERBINDE_TIMEOUT = 20000;  // ms, danach oeffnet der Konfig-AP
 static const uint32_t WLAN_NEUSTART_NACH    = 120000; // ms ohne Verbindung -> Konfig-AP
 static const uint32_t DURCHLAUF_MS          = 1000;   // Haltezeit je Kanal beim Durchlauftest
+static const uint32_t SPEICHER_VERZOEGERUNG_MS = 2000; // ms Ruhe, bevor der Lampenzustand ins NVS geht
