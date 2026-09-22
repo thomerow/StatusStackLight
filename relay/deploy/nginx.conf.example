@@ -1,0 +1,60 @@
+# nginx as a reverse proxy in front of the StatusStackLight relay.
+#
+# Replace relay.example.org with your host name, copy to
+# /etc/nginx/sites-available/, link to sites-enabled, and get the certificate
+# with:  sudo certbot --nginx -d relay.example.org
+#
+# The stack light trusts Let's Encrypt certificates out of the box (ISRG Root
+# X1 and X2, see firmware/include/relay_ca.h).
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name relay.example.org;
+
+    # Everything over HTTPS - the API keys are in the headers. Note: the stack
+    # light does not follow redirects, so enter the https:// address there.
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name relay.example.org;
+
+    ssl_certificate     /etc/letsencrypt/live/relay.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/relay.example.org/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:5080;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Long polling: the relay holds a stack light's request for up to
+        # 25 s (Settings -> Long poll). The timeout must stay above that.
+        proxy_read_timeout 60s;
+        # Hand the answer on at once instead of collecting it first.
+        proxy_buffering off;
+    }
+}
+
+# Variant: under a sub-path of an existing site, e.g.
+# https://example.org/stacklight/ - set PathBase=/stacklight for the relay
+# (see the systemd unit) and add to that site's server block:
+#
+#   location /stacklight/ {
+#       proxy_pass http://127.0.0.1:5080;     # no URI part: the path is passed on as is
+#       proxy_http_version 1.1;
+#       proxy_set_header Connection "";
+#       proxy_set_header Host $host;
+#       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#       proxy_set_header X-Forwarded-Proto $scheme;
+#       proxy_read_timeout 60s;
+#       proxy_buffering off;
+#   }

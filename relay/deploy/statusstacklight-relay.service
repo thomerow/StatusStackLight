@@ -1,0 +1,53 @@
+# systemd unit for the StatusStackLight relay.
+#
+# Install (see relay/README.md for the whole procedure):
+#   sudo cp statusstacklight-relay.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now statusstacklight-relay
+#
+# Logs: journalctl -u statusstacklight-relay -f
+
+[Unit]
+Description=StatusStackLight relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=statusstacklight
+Group=statusstacklight
+WorkingDirectory=/opt/statusstacklight-relay
+ExecStart=/opt/statusstacklight-relay/StatusStackLight.Relay
+
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_NOLOGO=1
+# Behind nginx: only reachable from this machine. For operation without a
+# proxy, http://0.0.0.0:5080 - but then the keys travel in plain text.
+Environment=Urls=http://127.0.0.1:5080
+Environment=DataDirectory=/var/lib/statusstacklight-relay
+# Served under a sub-path, e.g. https://example.org/stacklight/:
+#Environment=PathBase=/stacklight
+
+# Creates /var/lib/statusstacklight-relay owned by the service user.
+StateDirectory=statusstacklight-relay
+
+Restart=always
+RestartSec=5
+# ASP.NET Core shuts down cleanly on SIGINT/SIGTERM; open long polls end at once.
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+# Hardening: the relay only needs its data directory.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

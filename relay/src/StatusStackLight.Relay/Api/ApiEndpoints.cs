@@ -65,7 +65,8 @@ public static class ApiEndpoints
     /// soon as the image changes, at the latest after <c>wait</c> seconds with the unchanged image.
     /// </summary>
     private static async Task<IResult> GetLamps(long? version, int? wait, HttpContext http,
-                                                RelayEngine engine, LampRegistry registry)
+                                                RelayEngine engine, LampRegistry registry,
+                                                IHostApplicationLifetime lifetime)
     {
         int maxWait = engine.Config.Settings.LongPollSeconds;
         int seconds = Math.Clamp(wait ?? maxWait, 0, maxWait);
@@ -73,8 +74,19 @@ public static class ApiEndpoints
         bool isLamp = http.User.IsInRole(Roles.Lamp);
 
         if (isLamp) registry.Seen(name, http, version ?? 0, polling: true);
-        var snapshot = await engine.WaitForChangeAsync(version ?? 0, TimeSpan.FromSeconds(seconds),
-                                                       http.RequestAborted);
+
+        // On shutdown, every waiting lamp gets its answer at once instead of holding up the
+        // stop for up to LongPollSeconds; it then reconnects to the restarted relay.
+        DisplaySnapshot snapshot;
+        using (var cancel = CancellationTokenSource.CreateLinkedTokenSource(
+                   http.RequestAborted, lifetime.ApplicationStopping)) {
+            try {
+                snapshot = await engine.WaitForChangeAsync(version ?? 0, TimeSpan.FromSeconds(seconds),
+                                                           cancel.Token);
+            } catch (OperationCanceledException) when (lifetime.ApplicationStopping.IsCancellationRequested) {
+                snapshot = engine.Snapshot;
+            }
+        }
         if (isLamp) registry.Seen(name, http, snapshot.Version, polling: false);
 
         http.Response.Headers.CacheControl = "no-store";

@@ -232,3 +232,24 @@ public class AdminUiTests : IClassFixture<RelayFactory>
         Assert.Contains("set-password", html);
     }
 }
+
+public class ShutdownTests
+{
+    [Fact]
+    public async Task Waiting_long_polls_are_answered_on_shutdown()
+    {
+        using var factory = new RelayFactory();
+        var lamp = await factory.ClientWithKeyAsync(KeyRole.Lamp);
+        var first = JsonDocument.Parse(await lamp.GetStringAsync("/api/v1/lamps?wait=0")).RootElement;
+        long version = first.GetProperty("version").GetInt64();
+
+        var poll = lamp.GetAsync($"/api/v1/lamps?version={version}&wait=20");
+        await Task.Delay(300);
+        Assert.False(poll.IsCompleted);
+
+        factory.Services.GetRequiredService<Microsoft.Extensions.Hosting.IHostApplicationLifetime>().StopApplication();
+
+        var r = await poll.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+    }
+}

@@ -91,6 +91,12 @@ String describe(int code)
         case 401: return "HTTP 401 - the relay does not know this key";
         case 403: return "HTTP 403 - this is not a lamp key";
         case 404: return "HTTP 404 - no relay at this address";
+        // Redirects are not followed - typically nginx sending http:// on to
+        // https://, and the fix is to enter the https address.
+        case 301:
+        case 302:
+        case 307:
+        case 308: return "HTTP " + String(code) + " - the relay redirects; enter its https:// address";
         default:  return "HTTP " + String(code);
     }
 }
