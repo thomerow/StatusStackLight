@@ -4,7 +4,9 @@ Firmware für die 5-Lampen-Signalsäule. Sie stellt eine HTTP-JSON-API zur Anste
 Lampen bereit und ein Web-Interface, mit dem sich jede Lampe einzeln in allen Parametern
 durchspielen lässt.
 
-Das Gehäuse und die Mechanik liegen im Nachbarverzeichnis [`../Gehäuse`](../Geh%C3%A4use).
+Gehäuse und Mechanik liegen in [`../enclosure`](../enclosure/OpenSCAD/README.md), die Anzeige
+der Claude-Code-Sessions in [`../claude-code`](../claude-code/README.md). Den Überblick über
+das ganze Projekt gibt die [README im Hauptverzeichnis](../README.md).
 
 ## Was die Lampen können
 
@@ -231,69 +233,5 @@ Pulsiertakt (0.1–20 Hz) und hat mit der PWM-Trägerfrequenz nichts zu tun.
 
 ## Anzeige der Claude-Code-Sessions
 
-Angesteuert wird die Säule von `~/.claude/stacklight.ps1`, das über Hooks in
-`~/.claude/settings.json` hängt (liegt außerhalb dieses Repos). Jede Session legt ihren
-Zustand als Datei unter `~/.claude/stacklight/` ab; daraus wird berechnet, was die Lampen
-zeigen, und in **einem** `POST /api/lamps` gesetzt – bei jedem Ereignis vollständig, auch
-wenn sich nichts geändert hat. So heilt der nächste Hook jede Abweichung, ob durch Neustart,
-Web-Interface oder curl.
-
-| Lampe | Zustand | Darstellung |
-|---|---|---|
-| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,15 Hz, bis 30 % |
-| grün | fertig – gerade fertig geworden | dauerhaft, 45 %, fünf Minuten lang |
-| blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
-| orange | Rückfrage an dich | dauerhaft, 40 % |
-| orange | wartet auf eine Freigabe | blinkend, 1,2 Hz, 50 % |
-| rot | Fehler | dauerhaft, 100 %, rastet bis zum nächsten Prompt |
-| rot | gefährlicher Befehl (`rm -rf`, `git push --force`, …) | kurzer Blitz, 6 Hz, über dem übrigen Zustand |
-
-Genau eine von bereit/fertig/arbeitet/Rückfrage/Freigabe brennt (Rangfolge von rechts nach
-links), rot liegt unabhängig darüber.
-
-**Orange nur, wenn Claude dich braucht.** Der Notification-Hook hat Matcher auf den
-Benachrichtigungstyp: `permission_prompt` ist eine Freigabe (blinkt),
-`elicitation_dialog`, `elicitation_url_dialog` und `agent_needs_input` sind Rückfragen
-(ruhig). Die Leerlauf-Meldung nach einer Minute ohne Eingabe (`idle_prompt`) ist bewusst
-nicht dabei – sie würde jedes Grün nach 60 s zu Orange machen. Zusätzlich lösen die
-Werkzeuge `ExitPlanMode` (Freigabe) und `AskUserQuestion` (Rückfrage) über `PreToolUse`
-direkt aus. Getrennt wird über eigene Hook-Einträge mit den Events `Freigabe` und
-`Rueckfrage`, nicht über Felder der Hook-Eingabe: deren Aufbau ist für Notification nicht
-dokumentiert.
-
-**Orange geht wieder aus**, sobald das freigegebene Werkzeug gelaufen bzw. die Frage
-beantwortet ist: `PostToolUse` ruft das Skript mit `ToolDone` auf, und es springt zurück
-auf blau. Ohne das bliebe Orange bis zum Ende der Antwort stehen, denn eine Freigabe ist
-kein neuer Prompt. Grenze: Einen Zeitpunkt „Freigabe erteilt" meldet Claude Code nicht –
-bei einem langen Build blinkt es also, bis der freigegebene Befehl fertig ist.
-`PostToolUse` feuert nach jedem Werkzeugaufruf; wartet die Session nicht, beendet sich das
-Skript sofort ohne Anfrage an die Säule.
-
-**Grün fällt nach fünf Minuten auf weiß** – „frisch fertig" ist eine andere Information
-als „steht schon eine Weile da". Weil danach womöglich lange kein Hook mehr feuert, startet
-`Stop` einen versteckten Nachzügler, der die Zeit absitzt und einmal neu rechnet. Es läuft
-immer nur einer; ein neuer `Stop` beendet den vorigen.
-
-**Helligkeiten:** Weiß ist mit Abstand die hellste Lampe und braucht viel weniger Prozent,
-um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen. Beim Atmen ist
-die Prozentzahl der Gipfel: der Atemzug läuft von 0 bis dorthin, und durch die
-Gammakorrektur ist das untere Drittel praktisch dunkel. Deshalb liegt der Gipfel mit 25 %
-deutlich über dem, was Weiß als Dauerlicht bräuchte. Orange ist mit
-voller Helligkeit aus der Nähe grell und läuft deshalb gedimmt; die Aufmerksamkeit kommt vom
-Blinken, nicht von der Helligkeit. Alle Werte stehen in der Tabelle `$Anzeige` oben im
-Skript.
-
-**Warnblitz nur bei echten Treffern.** Die `if`-Bedingungen im `PreToolUse`-Hook
-(`Bash(rm -rf *)` usw.) sind nur ein grober Vorfilter: Befehle, die Claude Code nicht sauber
-zerlegen kann – Schleifen, `$(…)`, Heredocs –, lässt es sicherheitshalber durch; schon
-`for i in 1; do echo "$(echo harmlos)"; done` passiert den Vorfilter. Das Skript prüft
-deshalb den tatsächlichen Befehlstext noch einmal selbst.
-
-Zum Ausprobieren ohne Hooks:
-
-```powershell
-$s = "$HOME\.claude\stacklight.ps1"
-& $s -Event Status      # zeigt, was die Säule zeigen sollte, ohne etwas zu schalten
-& $s -Event SelfTest    # Kanal-Durchlauf der Firmware, danach zurück in den Istzustand
-& $s -Event AllOff
-```
+Die Säule zeigt über Hooks den Zustand laufender Claude-Code-Sessions an. Skript, Hook-
+Konfiguration und Anzeigeschema liegen in [`../claude-code`](../claude-code/README.md).

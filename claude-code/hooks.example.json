@@ -1,0 +1,274 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "SessionStart"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "UserPromptSubmit"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Freigabe"
+            ],
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "elicitation_dialog|elicitation_url_dialog|agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Rueckfrage"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Stop"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "StopFailure"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "SessionEnd"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Freigabe"
+            ],
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Rueckfrage"
+            ],
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(rm -rf *)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          },
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(rm -fr *)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          },
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(git push --force*)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          },
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(git push -f *)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          },
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(git reset --hard*)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          },
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "Danger"
+            ],
+            "async": true,
+            "if": "Bash(git clean -fd*)",
+            "statusMessage": "Signalsaeule: Warnblitz"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "args": [
+              "-NoProfile",
+              "-File",
+              "C:\\Pfad\\zu\\StatusStackLight\\claude-code\\stacklight.ps1",
+              "-Event",
+              "ToolDone"
+            ],
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
