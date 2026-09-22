@@ -1,0 +1,45 @@
+@page "/events"
+@model EventsModel
+@{ ViewData["Title"] = "Events"; }
+<h1>Events</h1>
+<p class="lead">What each hook event does to its session. Every session has a state (idle, working, asking, waiting,
+  done) and an error flag; the <a href="~/display">display</a> is computed from all open sessions together.
+  An idle session shows as <i>ready</i>, a done one falls back to ready after a while (see <a href="~/settings">Settings</a>).</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<form method="post">
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Event</th><th>Session state</th><th>Error</th><th>Only if the session is</th><th>Warning flash</th></tr></thead>
+      <tbody>
+      @for (int i = 0; i < Model.Rules.Count; i++) {
+        var r = Model.Rules[i];
+        <tr>
+          <td><b>@r.Event</b><div class="muted small">@Ui.Describe(r.Event)</div>
+            <input type="hidden" asp-for="Rules[i].Event"></td>
+          <td><select asp-for="Rules[i].State">
+            @foreach (var a in Enum.GetValues<StateAction>()) { <option value="@a">@Ui.Describe(a)</option> }
+          </select></td>
+          <td><select asp-for="Rules[i].Error">
+            @foreach (var a in Enum.GetValues<ErrorAction>()) { <option value="@a">@Ui.Describe(a)</option> }
+          </select></td>
+          <td class="small">
+            @foreach (var s in Enum.GetValues<SessionState>()) {
+              <label class="use" style="display:inline-flex;gap:4px;margin-right:8px;color:var(--text)">
+                <input type="checkbox" name="Rules[@i].OnlyWhen" value="@s" @(r.OnlyWhen.Contains(s) ? "checked" : "")>@s.ToString().ToLowerInvariant()
+              </label>
+            }
+            <div class="muted">none ticked: always</div>
+          </td>
+          <td><input type="checkbox" asp-for="Rules[i].Flash"></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  <div class="actions"><button class="primary">Save</button></div>
+</form>
+<form method="post" asp-page-handler="Reset" class="actions">
+  <button class="danger" data-confirm="Reset all event rules to the factory settings?">Reset to defaults</button>
+</form>

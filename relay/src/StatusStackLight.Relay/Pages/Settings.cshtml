@@ -1,0 +1,49 @@
+@page "/settings"
+@model SettingsModel
+@{ ViewData["Title"] = "Settings"; }
+<h1>Settings</h1>
+<p class="lead">Priority of the main states and the timings.</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<form method="post">
+  <div class="card">
+    <h2>Priority</h2>
+    <p class="muted small">When several sessions are in different states, the highest one is shown. Each state once.</p>
+    @for (int i = 0; i < Model.Priority.Count; i++) {
+      <div class="row" style="margin-bottom:6px">
+        <span class="muted mono" style="width:24px">@(i + 1).</span>
+        <select asp-for="Priority[i]">
+          @foreach (var s in DisplayStates.Main) { <option value="@s">@s.Id()</option> }
+        </select>
+      </div>
+    }
+  </div>
+
+  <div class="card grid">
+    <div>
+      <label asp-for="DoneMinutes">Done → ready after (minutes)</label>
+      <input asp-for="DoneMinutes" type="number" min="0" max="1440" step="0.5">
+      <div class="muted small">How long green means “freshly done”. 0: never green.</div>
+    </div>
+    <div>
+      <label asp-for="StaleMinutes">Forget a session after (minutes)</label>
+      <input asp-for="StaleMinutes" type="number" min="1" max="10080" step="1">
+      <div class="muted small">A session without any event for this long counts as crashed.</div>
+    </div>
+    <div>
+      <label asp-for="FlashSeconds">Warning flash (seconds)</label>
+      <input asp-for="FlashSeconds" type="number" min="0.1" max="30" step="0.1">
+      <div class="muted small">How long the danger display sits on top.</div>
+    </div>
+    <div>
+      <label asp-for="LongPollSeconds">Long poll (seconds)</label>
+      <input asp-for="LongPollSeconds" type="number" min="5" max="55" step="1">
+      <div class="muted small">Longest time a stack light's request is held open. Must stay below the proxy timeout.</div>
+    </div>
+  </div>
+  <div class="actions"><button class="primary">Save</button></div>
+</form>
+<form method="post" asp-page-handler="Reset" class="actions">
+  <button class="danger" data-confirm="Reset priority and timings to the factory settings?">Reset to defaults</button>
+</form>

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace StatusStackLight.Relay.Domain;
 
 /// <summary>The five lamps, in channel order 1...5 as on the firmware.</summary>
@@ -61,6 +63,7 @@ public sealed record EventRule
     public bool Flash { get; init; }
 
     /// <summary>An event that neither changes the state nor the error does not touch the session.</summary>
+    [JsonIgnore]
     public bool TouchesSession => State != StateAction.Keep || Error != ErrorAction.Keep;
 }
 

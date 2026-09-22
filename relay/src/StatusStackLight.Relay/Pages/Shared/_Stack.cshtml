@@ -1,0 +1,12 @@
+@model IReadOnlyDictionary<LampId, LampOutput>
+@* A small stack light. relay.js animates it with the firmware's formulas. *@
+<div class="stack" aria-hidden="true">
+  <div class="cap"></div>
+  @foreach (var id in Ui.StackOrder) {
+    var l = Model.TryGetValue(id, out var v) ? v : LampOutput.Unused;
+    <div class="seg" style="--c:@Ui.Color(id)" data-lamp="@id.Id()"
+         data-on="@(l.On ? "1" : "0")" data-effect="@l.Effect.Id()" data-brightness="@l.Brightness"
+         data-frequency="@l.Frequency" data-duty="@l.Duty"></div>
+  }
+  <div class="base"></div>
+</div>

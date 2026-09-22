@@ -204,3 +204,31 @@ public class ApiTests : IClassFixture<RelayFactory>
         Assert.Empty(await store.SaveAsync(Defaults.Config));
     }
 }
+
+public class AdminUiTests : IClassFixture<RelayFactory>
+{
+    private readonly RelayFactory _factory;
+    public AdminUiTests(RelayFactory factory) => _factory = factory;
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/display")]
+    [InlineData("/events")]
+    [InlineData("/settings")]
+    [InlineData("/keys")]
+    public async Task Admin_pages_redirect_to_login(string path)
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var r = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Redirect, r.StatusCode);
+        Assert.StartsWith("/login", r.Headers.Location?.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task Login_explains_how_to_set_the_password()
+    {
+        var html = await _factory.CreateClient().GetStringAsync("/login");
+        Assert.Contains("set-password", html);
+    }
+}

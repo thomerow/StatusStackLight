@@ -1,0 +1,60 @@
+@page "/keys"
+@model KeysModel
+@{ ViewData["Title"] = "Keys"; var now = DateTimeOffset.UtcNow; }
+<h1>API keys</h1>
+<p class="lead">Every stack light and every computer gets its own key, so a single one can be withdrawn.
+  <span class="pill lamp">lamp</span> keys may only fetch the display, <span class="pill client">client</span> keys
+  may only report events. Deleting a key takes effect immediately.</p>
+
+@if (Model.NewKey is not null) {
+  <div class="card" style="border-color:var(--accent)">
+    <h2>New key for “@Model.NewKeyName”</h2>
+    <p class="small">Copy it now - it is not stored and will not be shown again.</p>
+    <div class="keybox"><code id="newkey">@Model.NewKey</code><button type="button" class="small" data-copy="newkey">Copy</button></div>
+  </div>
+}
+@if (Model.Error is not null) {
+  <p class="flash bad">@Model.Error</p>
+}
+
+<div class="card">
+  <h2>Create a key</h2>
+  <form method="post" asp-page-handler="Create" class="row">
+    <input type="text" name="name" placeholder="Name, e.g. desk stack light or laptop" maxlength="64" required style="flex:1;min-width:200px">
+    <select name="role">
+      <option value="@KeyRole.Lamp">lamp - stack light</option>
+      <option value="@KeyRole.Client">client - hook script</option>
+    </select>
+    <button class="primary">Create</button>
+  </form>
+</div>
+
+<div class="card table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Role</th><th>Key</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+    <tbody>
+    @if (Model.Keys.Count == 0) {
+      <tr><td colspan="6" class="muted">No keys yet.</td></tr>
+    }
+    @foreach (var k in Model.Keys) {
+      <tr>
+        <td>
+          <form method="post" asp-page-handler="Rename" asp-route-id="@k.Id" class="row" style="gap:6px">
+            <input type="text" name="name" value="@k.Name" maxlength="64" required style="width:180px">
+            <button class="small">Rename</button>
+          </form>
+        </td>
+        <td><span class="pill @(k.Role == KeyRole.Lamp ? "lamp" : "client")">@k.Role.ToString().ToLowerInvariant()</span></td>
+        <td class="mono">@k.Prefix…</td>
+        <td class="small" title="@Ui.Utc(k.CreatedAt)">@k.CreatedAt.UtcDateTime.ToString("yyyy-MM-dd")</td>
+        <td class="small" title="@Ui.Utc(k.LastUsedAt)">@Ui.Ago(k.LastUsedAt, now)</td>
+        <td>
+          <form method="post" asp-page-handler="Delete" asp-route-id="@k.Id" class="inline">
+            <button class="small danger" data-confirm="Delete the key “@k.Name”? Whatever uses it stops working at once.">Delete</button>
+          </form>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table>
+</div>

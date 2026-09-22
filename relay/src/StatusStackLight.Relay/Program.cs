@@ -9,6 +9,7 @@
 //
 // Command line: "set-password" sets the admin password and exits.
 
+using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -20,6 +21,11 @@ using StatusStackLight.Relay.Api;
 using StatusStackLight.Relay.Data;
 using StatusStackLight.Relay.Domain;
 using StatusStackLight.Relay.Services;
+
+// Numbers in forms and in the preview's data attributes always with a decimal point,
+// whatever the locale of the server - "0,15 Hz" would not survive a round trip.
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture =
+    CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 

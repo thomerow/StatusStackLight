@@ -1,0 +1,21 @@
+@page "/login"
+@model LoginModel
+@{ ViewData["Title"] = "Log in"; }
+<div class="login card">
+  <h1>Log in</h1>
+  @if (!Model.PasswordSet) {
+    <p class="flash bad">No admin password is set yet. Set it on the server:</p>
+    <p><code>StatusStackLight.Relay set-password</code></p>
+    <p class="muted small">See relay/README.md. The password cannot be set over the web on purpose.</p>
+  } else {
+    @if (Model.Failed) {
+      <p class="flash bad">Wrong password.</p>
+    }
+    <form method="post">
+      <label for="password">Admin password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+      <input type="hidden" name="returnUrl" value="@Model.ReturnUrl">
+      <div class="actions"><button class="primary">Log in</button></div>
+    </form>
+  }
+</div>

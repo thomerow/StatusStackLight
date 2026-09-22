@@ -1,0 +1,65 @@
+@page
+@model IndexModel
+@{ ViewData["Title"] = "Dashboard"; var snap = Model.Snapshot; }
+<div id="dashboard" data-status-url="@Url.Content("~/api/v1/status")">
+  <div class="card">
+    <div class="hero">
+      <partial name="_Stack" model="snap.Lamps" />
+      <div>
+        <div class="muted small">The stack light shows</div>
+        <div class="state @(snap.Situation.Main is null ? "none" : "")" data-state>@(snap.Situation.Main?.Id() ?? "no session")</div>
+        <div class="row small" style="margin-top:6px">
+          <span class="pill bad" data-error @(snap.Situation.Error ? "" : "hidden")>error</span>
+          <span class="pill bad" data-flash @(snap.Situation.Flash ? "" : "hidden")>warning flash</span>
+          <span class="muted">version <span class="mono" data-version>@snap.Version</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Open sessions</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Session</th><th>Computer</th><th>State</th><th>Last event</th></tr></thead>
+        <tbody data-sessions><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Stack lights</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Status</th><th>Local IP</th><th>Seen from</th><th>Firmware</th><th>Last poll</th></tr></thead>
+        <tbody data-lights><tr><td colspan="6" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Try it</h2>
+  <p class="muted small">Sends an event for a test session named <code>@IndexModel.TestSession</code>, as a hook would.
+     End it with SessionEnd, or wait until it is forgotten.</p>
+  <form method="post" asp-page-handler="Event" class="test-buttons">
+    @foreach (var ev in Enum.GetValues<HookEvent>()) {
+      <button class="small" name="ev" value="@ev" title="@Ui.Describe(ev)">@ev</button>
+    }
+  </form>
+  <form method="post" asp-page-handler="AllOff" class="actions">
+    <button class="small danger" data-confirm="Forget all sessions? The stack light goes dark until the next hook.">All off</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Connecting</h2>
+  <p class="small">Relay address: <code>@Model.RelayUrl</code></p>
+  <p class="small"><b>Stack light:</b> in its web interface under <i>Relay</i>, enter this address and a key with the
+     role <span class="pill lamp">lamp</span>.</p>
+  <p class="small"><b>Hook script:</b> set two environment variables for the user that runs Claude Code, with a key of
+     the role <span class="pill client">client</span>:</p>
+  <pre class="keybox mono">setx STACKLIGHT_RELAY_URL "@Model.RelayUrl"
+setx STACKLIGHT_RELAY_KEY "ssl_…"</pre>
+  <p class="muted small">Keys are created under <a href="~/keys">Keys</a>.</p>
+</div>

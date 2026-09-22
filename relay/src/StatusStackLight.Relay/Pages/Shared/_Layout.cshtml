@@ -1,0 +1,39 @@
+@{
+    var page     = ViewContext.RouteData.Values["page"] as string;
+    bool loggedIn = User.Identity?.IsAuthenticated == true;
+    string Active(string p) => page == p ? "active" : "";
+}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@(ViewData["Title"] is string t ? $"{t} · " : "")StatusStackLight Relay</title>
+<link rel="stylesheet" href="~/relay.css" asp-append-version="true">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="~/">StatusStackLight <span>Relay</span></a>
+    @if (loggedIn) {
+      <nav>
+        <a class="@Active("/Index")" href="~/">Dashboard</a>
+        <a class="@Active("/Display")" href="~/display">Display</a>
+        <a class="@Active("/Events")" href="~/events">Events</a>
+        <a class="@Active("/Settings")" href="~/settings">Settings</a>
+        <a class="@Active("/Keys")" href="~/keys">Keys</a>
+        <form method="post" action="~/logout" class="inline"><button class="link">Log out</button></form>
+      </nav>
+    }
+  </header>
+  @if (TempData["Message"] is string message) {
+    <p class="flash ok">@message</p>
+  }
+  <main>
+    @RenderBody()
+  </main>
+</div>
+<script src="~/relay.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

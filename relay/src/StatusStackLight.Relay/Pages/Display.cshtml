@@ -1,0 +1,48 @@
+@page "/display"
+@model DisplayModel
+@{ ViewData["Title"] = "Display"; }
+<h1>Display</h1>
+<p class="lead">How the stack light looks in each state. Exactly one of the five main states is lit at a time
+  (which one wins is set under <a href="~/settings">Settings</a>); error and the warning flash sit on top.
+  A state can use several lamps. Frequency is the blink or pulse rate, duty the lit share of a blink period.</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<form method="post">
+  @for (int i = 0; i < Model.States.Count; i++) {
+    var st = Model.States[i];
+    <div class="card state-card" data-state-card>
+      <partial name="_Stack" model="Model.Empty" />
+      <div class="body">
+        <h2>@st.State.Id()</h2>
+        <div class="muted small">@Ui.Describe(st.State)</div>
+        <input type="hidden" asp-for="States[i].State">
+        <div class="lamp-rows">
+          @for (int j = 0; j < st.Lamps.Count; j++) {
+            var l = st.Lamps[j];
+            <div class="lamp-row" data-lamp-row="@l.Lamp.Id()">
+              <input type="hidden" asp-for="States[i].Lamps[j].Lamp">
+              <label class="use"><input type="checkbox" asp-for="States[i].Lamps[j].Use" data-field="use">
+                <span class="dot" style="--c:@Ui.Color(l.Lamp)"></span>@l.Lamp.Id()</label>
+              <select asp-for="States[i].Lamps[j].Effect" data-field="effect">
+                @foreach (var e in Enum.GetValues<Effect>()) { <option value="@e">@e.Id()</option> }
+              </select>
+              <span class="field"><input type="number" asp-for="States[i].Lamps[j].Brightness" data-field="brightness"
+                     min="@ConfigValidator.BrightnessMin" max="@ConfigValidator.BrightnessMax" step="1"> %</span>
+              <span class="field"><input type="number" asp-for="States[i].Lamps[j].Frequency" data-field="frequency"
+                     min="@ConfigValidator.FrequencyMin" max="@ConfigValidator.FrequencyMax" step="0.01"> Hz</span>
+              <span class="field">duty <input type="number" asp-for="States[i].Lamps[j].Duty" data-field="duty"
+                     min="@ConfigValidator.DutyMin" max="@ConfigValidator.DutyMax" step="1"> %</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+  <div class="actions">
+    <button class="primary">Save</button>
+  </div>
+</form>
+<form method="post" asp-page-handler="Reset" class="actions">
+  <button class="danger" data-confirm="Reset the whole display to the factory settings?">Reset to defaults</button>
+</form>
