@@ -145,9 +145,9 @@ function hol(pfad, optionen) {
 function sperre(id, feld) { sperren[id + "." + feld] = Date.now() + 1500; }
 function gesperrt(id, feld) { return (sperren[id + "." + feld] || 0) > Date.now(); }
 
-// Blinktakt logarithmisch: linear verteilt landeten die brauchbaren langsamen
-// Werte (0,3 Hz Pulsieren, 1,2 Hz Warten) auf wenigen Millimetern am linken
-// Rand. So liegt 1 Hz in der Mitte, 0,1-1 Hz bekommt den halben Regelweg.
+// Blinktakt logarithmisch: die meistgenutzten Werte sind langsam (0,3 Hz
+// Pulsieren, 1,2 Hz Warten) und brauchen feinen Regelweg. 1 Hz liegt in der
+// Mitte, 0,1-1 Hz bekommt den halben Weg.
 // Der Regler kennt nur Positionen 0...1000, Hz gibt es erst beim Umrechnen.
 const TAKT_MIN = 0.1, TAKT_MAX = 10;
 function hzAusPosition(p) {
