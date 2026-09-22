@@ -1,0 +1,23 @@
+# Regeln für das ganze Repo. Projektspezifisches steht in enclosure/.gitignore
+# und firmware/.gitignore.
+
+# --- Dropbox ----------------------------------------------------------------
+*conflicted copy*
+*in Konflikt stehende Kopie*
+.dropbox
+.dropbox.attr
+~$*
+
+# --- Betriebssystem ---------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+._*
+
+# --- Editoren / Werkzeuge ---------------------------------------------------
+*.swp
+*~
+.vscode/
+.idea/
+.claude/
