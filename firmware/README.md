@@ -240,7 +240,7 @@ Web-Interface oder curl.
 
 | Lampe | Zustand | Darstellung |
 |---|---|---|
-| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,1 Hz, 12 % |
+| weiß | bereit – Session offen, nichts los | atmet sehr langsam, 0,1 Hz, bis 25 % |
 | grün | fertig – gerade fertig geworden | dauerhaft, 45 %, fünf Minuten lang |
 | blau | arbeitet | pulsierend, 0,3 Hz, 70 % |
 | orange | Rückfrage an dich | dauerhaft, 40 % |
@@ -275,7 +275,10 @@ als „steht schon eine Weile da". Weil danach womöglich lange kein Hook mehr f
 immer nur einer; ein neuer `Stop` beendet den vorigen.
 
 **Helligkeiten:** Weiß ist mit Abstand die hellste Lampe und braucht viel weniger Prozent,
-um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen. Orange ist mit
+um gleich hell zu wirken – ungedimmt ist es als Dauerlicht nicht zu ertragen. Beim Atmen ist
+die Prozentzahl der Gipfel: der Atemzug läuft von 0 bis dorthin, und durch die
+Gammakorrektur ist das untere Drittel praktisch dunkel. Deshalb liegt der Gipfel mit 25 %
+deutlich über dem, was Weiß als Dauerlicht bräuchte. Orange ist mit
 voller Helligkeit aus der Nähe grell und läuft deshalb gedimmt; die Aufmerksamkeit kommt vom
 Blinken, nicht von der Helligkeit. Alle Werte stehen in der Tabelle `$Anzeige` oben im
 Skript.
