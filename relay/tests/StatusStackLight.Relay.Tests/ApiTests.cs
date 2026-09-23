@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using StatusStackLight.Relay.Data;
@@ -10,13 +11,21 @@ using StatusStackLight.Relay.Domain;
 namespace StatusStackLight.Relay.Tests;
 
 /// <summary>Starts the relay with its own empty data directory.</summary>
-public sealed class RelayFactory : WebApplicationFactory<Program>
+public class RelayFactory : WebApplicationFactory<Program>
 {
+    public const string TestPassword = "test-password";
+
     public string DataDirectory { get; } =
         Path.Combine(Path.GetTempPath(), "ssl-relay-tests", Guid.NewGuid().ToString("N"));
 
-    protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder) =>
+    /// <summary>The sub-path the relay runs under, empty for the root.</summary>
+    public virtual string PathBase => "";
+
+    protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+    {
         builder.UseSetting("DataDirectory", DataDirectory);
+        if (PathBase.Length > 0) builder.UseSetting("PathBase", PathBase);
+    }
 
     public async Task<HttpClient> ClientWithKeyAsync(KeyRole role)
     {
@@ -25,6 +34,25 @@ public sealed class RelayFactory : WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
         return client;
     }
+
+    /// <summary>A client logged in as the admin, as a browser would be.</summary>
+    public async Task<HttpClient> AdminClientAsync()
+    {
+        await Services.GetRequiredService<Services.AdminPassword>().SetAsync(TestPassword);
+        var client = CreateClient();
+        var login = await client.GetStringAsync($"{PathBase}/login");
+        var r = await client.PostAsync($"{PathBase}/login", Form(login, ("password", TestPassword)));
+        r.EnsureSuccessStatusCode();
+        return client;
+    }
+
+    /// <summary>A form post with the antiforgery token out of <paramref name="html"/>.</summary>
+    public static FormUrlEncodedContent Form(string html, params (string Name, string Value)[] fields) =>
+        new([.. fields.Select(f => KeyValuePair.Create(f.Name, f.Value)),
+             KeyValuePair.Create("__RequestVerificationToken", AntiforgeryToken(html))]);
+
+    public static string AntiforgeryToken(string html) =>
+        Regex.Match(html, "__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
 
     protected override void Dispose(bool disposing)
     {
@@ -230,6 +258,50 @@ public class AdminUiTests : IClassFixture<RelayFactory>
     {
         var html = await _factory.CreateClient().GetStringAsync("/login");
         Assert.Contains("set-password", html);
+    }
+}
+
+/// <summary>The relay as it runs behind a reverse proxy under a sub-path.</summary>
+public sealed class SubPathFactory : RelayFactory
+{
+    public override string PathBase => "/stacklight";
+}
+
+public class SubPathTests : IClassFixture<SubPathFactory>
+{
+    private readonly SubPathFactory _factory;
+    public SubPathTests(SubPathFactory factory) => _factory = factory;
+
+    /// <summary>
+    /// The dashboard sits at the root, so its forms must not post to the bare sub-path: a proxy
+    /// that answers /stacklight with a redirect to /stacklight/ turns the POST into a GET, and the
+    /// buttons would silently reload the page.
+    /// </summary>
+    [Fact]
+    public async Task Test_buttons_post_to_the_sub_path_with_a_trailing_slash()
+    {
+        var client = await _factory.AdminClientAsync();
+
+        var html = await client.GetStringAsync("/stacklight/");
+
+        Assert.Contains("action=\"/stacklight/?handler=Event\"", html);
+        Assert.Contains("action=\"/stacklight/?handler=AllOff\"", html);
+        Assert.NotEqual("", RelayFactory.AntiforgeryToken(html));
+    }
+
+    [Fact]
+    public async Task A_test_event_from_the_dashboard_arrives()
+    {
+        var engine = _factory.Services.GetRequiredService<RelayEngine>();
+        engine.Clear();
+        var client = await _factory.AdminClientAsync();
+        var html = await client.GetStringAsync("/stacklight/");
+
+        var r = await client.PostAsync("/stacklight/?handler=Event",
+                                       RelayFactory.Form(html, ("ev", nameof(HookEvent.UserPromptSubmit))));
+
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(DisplayState.Working, engine.Snapshot.Situation.Main);
     }
 }
 
