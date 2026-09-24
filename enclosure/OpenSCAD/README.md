@@ -153,6 +153,13 @@ recomputed.
 The front left zone (x 12…50, y 0…40) stays free for wiring; the lamp cables run from the
 MOSFET terminals to the cable feed-through in the lid.
 
+<p align="center">
+  <img src="../../docs/images/base-plate.jpg" width="620"
+       alt="The populated base plate seen from above: 8-channel MOSFET module, ESP32-S3, Mini560 and PD trigger board, each held by clips">
+  <br><em>The populated base plate. The ESP32's two ports point left (the back wall), the
+  USB-C power input right (the front wall).</em>
+</p>
+
 ### Special case: front left support ledge of the Mini560
 
 On the left board edge of the Mini560 (top view of the base plate, USB-C input at the
@@ -249,6 +256,14 @@ clean, without supports.
    slots) and fasten it with 4 × M3 countersunk screws.
 6. Place the stack light in the middle of the lid and fasten it with 4 × M4 – the screws on
    the 55 mm bolt circle take care of the centering.
+
+<p align="center">
+  <img src="../../docs/images/wiring.jpg" width="440"
+       alt="The main body standing on its lid with the lamp cables coming through the feed-through, next to it the populated base plate">
+  <br><em>Between steps 4 and 5: the main body rests on its lid, the lamp cables come through
+  the feed-through. Labelling them before they disappear into the terminals saves a lot of
+  tracing later.</em>
+</p>
 
 ## Next stages
 
