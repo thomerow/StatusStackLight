@@ -32,6 +32,15 @@ needed when computer and stack light are not on the same network.
 | Power | USB-C PD trigger board (requests 12 V) → Mini560 buck → 3.3 V into the ESP32's 3V3 pin |
 | Base | 138.8 × 120.8 × 35.8 mm, PETG or PLA+, heat-set inserts 4 × M3 and 4 × M4 |
 
+<p align="center">
+  <img src="docs/images/base-plate.jpg" height="250"
+       alt="The populated base plate seen from above: 8-channel MOSFET module, ESP32-S3, Mini560 and PD trigger board, each held by clips">
+  <img src="docs/images/wiring.jpg" height="250"
+       alt="The main body standing on its lid with the lamp cables coming through the feed-through, next to it the populated base plate">
+  <br><em>Everything sits on the base plate, held by printed clips – no screws. The five lamp
+  cables come through the feed-through in the lid.</em>
+</p>
+
 Pin assignment, dimensions and details are in the READMEs of
 [`enclosure/`](enclosure/OpenSCAD/README.md) and [`firmware/`](firmware/README.md).
 
